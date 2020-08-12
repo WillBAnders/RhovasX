@@ -5,7 +5,89 @@ import dev.willbanders.rhovas.x.parser.Parser
 class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) {
 
     override fun parse(): RhovasAst {
-        return parseStatement()
+        return parseSource()
+    }
+
+    private fun parseSource(): RhovasAst.Source {
+        val impts = generateSequence {
+            if (peek("import")) parseImport() else null
+        }.toList()
+        val mbrs = generateSequence {
+            if (tokens[0] != null) parseMember() else null
+        }.toList()
+        return RhovasAst.Source(impts, mbrs)
+    }
+
+    private fun parseImport(): RhovasAst.Import {
+        require(match("import"))
+        val path = mutableListOf<String>()
+        do {
+            path.add(parseIdentifier())
+        } while (match("."))
+        val name = if (match("as")) parseIdentifier() else null
+        require(match(";")) { "Expected semicolon" }
+        return RhovasAst.Import(path, name)
+    }
+
+    private fun parseMember(): RhovasAst.Member {
+        return when (tokens[0]?.literal) {
+            "class", "interface" -> parseComponent()
+            "var", "val" -> parsePropertyMbr()
+            "ctor" -> parseConstructorMbr()
+            "func" -> parseFunctionMbr()
+            else -> throw Exception("Expected a member.")
+        }
+    }
+
+    private fun parseComponent(): RhovasAst.Component {
+        return when (tokens[0]?.literal) {
+            "class" -> parseClassCmpt()
+            "interface" -> parseInterfaceCmpt()
+            else -> throw Exception("Expected a component.")
+        }
+    }
+
+    private fun parseClassCmpt(): RhovasAst.ClassCmpt {
+        require(match("class"))
+        require(match(RhovasTokenType.IDENTIFIER)) { "Expected a class name." }
+        val name = tokens[-1]!!.literal
+        val mbrs = parseSeq("{", null, "}", ::parseMember)
+        return RhovasAst.ClassCmpt(name, mbrs)
+    }
+
+    private fun parseInterfaceCmpt(): RhovasAst.InterfaceCmpt {
+        require(match("interface"))
+        require(match(RhovasTokenType.IDENTIFIER)) { "Expected a interface name." }
+        val name = tokens[-1]!!.literal
+        val mbrs = parseSeq("{", null, "}", ::parseMember)
+        return RhovasAst.InterfaceCmpt(name, mbrs)
+    }
+
+    private fun parsePropertyMbr(): RhovasAst.PropertyMbr {
+        require(match(listOf("var", "val")))
+        val mut = tokens[-1]!!.literal == "var"
+        val name = parseIdentifier()
+        val expr = if (match("=")) parseExpression() else null
+        require(match(";")) { "Expected semicolon." }
+        return RhovasAst.PropertyMbr(mut, name, expr)
+    }
+
+    private fun parseConstructorMbr(): RhovasAst.ConstructorMbr {
+        require(match("ctor"))
+        val params = parseSeq("(", ",", ")", ::parseIdentifier)
+        val body = parseStatement()
+        return RhovasAst.ConstructorMbr(params, body)
+    }
+
+    private fun parseFunctionMbr(): RhovasAst.FunctionMbr {
+        require(match("func"))
+        val name = parseIdentifier()
+        val params = parseSeq("(", ",", ")") {
+            require(match(RhovasTokenType.IDENTIFIER)) { "Expected parameter name." }
+            tokens[-1]!!.literal
+        }
+        val body = parseStatement()
+        return RhovasAst.FunctionMbr(name, params, body)
     }
 
     private fun parseStatement(): RhovasAst.Statement {
@@ -14,8 +96,10 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "{" -> parseBlockStmt()
             "var", "val" -> parseDeclarationStmt()
             "if" -> parseIfStmt()
+            "match" -> parseMatchStmt()
             "for" -> parseForStmt()
             "while" -> parseWhileStmt()
+            "return" -> parseReturnStmt()
             else -> {
                 val expr = parseExpression()
                 val stmt = if (match("=")) {
@@ -38,8 +122,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
     private fun parseDeclarationStmt(): RhovasAst.DeclarationStmt {
         require(match(listOf("var", "val")))
         val mut = tokens[-1]!!.literal == "var"
-        require(match(RhovasTokenType.IDENTIFIER)) { "Expected variable identifier." }
-        val name = tokens[-1]!!.literal
+        val name = parseIdentifier()
         val expr = if (match("=")) parseExpression() else null
         match(";")
         return RhovasAst.DeclarationStmt(mut, name, expr)
@@ -55,11 +138,28 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
         return RhovasAst.IfStmt(cond, ifStmt, elseStmt)
     }
 
+    private fun parseMatchStmt(): RhovasAst.MatchStmt {
+        require(match("match"))
+        val args = parseSeq("(", ",", ")", ::parseExpression)
+        require(match("{")) { "Expected opening brace." }
+        val cases = mutableListOf<Pair<List<RhovasAst.Expression>, RhovasAst.Statement>>()
+        while (!match("}")) {
+            val exprs = mutableListOf<RhovasAst.Expression>()
+            exprs.add(parseExpression())
+            while (match(",")) {
+                exprs.add(parseExpression())
+            }
+            require(match(":")) { "Expected colon." }
+            val stmt = parseStatement()
+            cases.add(Pair(exprs, stmt))
+        }
+        return RhovasAst.MatchStmt(args, cases)
+    }
+
     private fun parseForStmt(): RhovasAst.ForStmt {
         require(match("for"))
         require(match("(")) { "Expected opening parentheses." }
-        require(match(RhovasTokenType.IDENTIFIER)) { "Expected variable identifier." }
-        val name = tokens[-1]!!.literal
+        val name = parseIdentifier()
         require(match("in")) { "Expected literal 'in'." }
         val expr = parseExpression()
         require(match(")")) { "Expected closing parentheses." }
@@ -74,6 +174,13 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
         require(match(")")) { "Expected closing parentheses." }
         val body = parseStatement()
         return RhovasAst.WhileStmt(cond, body)
+    }
+
+    private fun parseReturnStmt(): RhovasAst.ReturnStmt {
+        require(match("return"))
+        val value = parseExpression()
+        require(match(";")) { "Expected semicolon." }
+        return RhovasAst.ReturnStmt(value)
     }
 
     private fun parseExpression(): RhovasAst.Expression {
@@ -124,8 +231,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
     private fun parseSecondaryExpr(): RhovasAst.Expression {
         var expr = parsePrimaryExpr()
         while (match(".")) {
-            require(match(RhovasTokenType.IDENTIFIER)) { "Expected a name follow period." }
-            val name = tokens[-1]!!.literal
+            val name = parseIdentifier()
             expr = if (peek("(")) {
                 val args = parseSeq("(", ",", ")", ::parseExpression)
                 RhovasAst.FunctionExpr(expr, name, args)
@@ -161,6 +267,11 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             }
             else -> throw Exception("Unexpected token " + tokens[0]!!)
         }
+    }
+
+    private fun parseIdentifier(): String {
+        require(match(RhovasTokenType.IDENTIFIER)) { "Expected an identifier." }
+        return tokens[-1]!!.literal
     }
 
     private fun <T> parseSeq(start: String, sep: String?, end: String, parser: () -> T): List<T> {

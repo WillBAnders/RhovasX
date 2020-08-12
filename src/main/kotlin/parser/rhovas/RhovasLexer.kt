@@ -10,7 +10,7 @@ class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
         chars.reset()
         return when {
             chars[0] == null -> null
-            peek("[A-Za-z]") -> lexIdentifier()
+            peek("[A-Za-z_]") -> lexIdentifier()
             peek("[0-9]") -> lexNumber()
             peek('\'') -> lexCharacter()
             peek('\"') -> lexString()
@@ -19,7 +19,7 @@ class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
     }
 
     private fun lexIdentifier(): Token<RhovasTokenType> {
-        require(match("[A-Za-z]"))
+        require(match("[A-Za-z_]"))
         while (match("[A-Za-z_-]")) {}
         return chars.emit(RhovasTokenType.IDENTIFIER)
     }

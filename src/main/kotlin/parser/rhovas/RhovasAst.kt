@@ -2,6 +2,47 @@ package dev.willbanders.rhovas.x.parser.rhovas
 
 sealed class RhovasAst {
 
+    data class Source(
+        val impts: List<Import>,
+        val mbrs: List<Member>
+    ) : RhovasAst()
+
+    data class Import(
+        val path: List<String>,
+        val name: String?
+    ) : RhovasAst()
+
+    open class Member : RhovasAst()
+
+    open class Component : Member()
+
+    data class ClassCmpt(
+        val name: String,
+        val mbrs: List<Member>
+    ) : Component()
+
+    data class InterfaceCmpt(
+        val name: String,
+        val mbrs: List<Member>
+    ) : Component()
+
+    data class PropertyMbr(
+        val mut: Boolean,
+        val name: String,
+        val value: Expression?
+    ) : Member()
+
+    data class ConstructorMbr(
+        val params: List<String>,
+        val body: Statement
+    ) : Member()
+
+    data class FunctionMbr(
+        val name: String,
+        val params: List<String>,
+        val body: Statement
+    ) : Member()
+
     open class Statement : RhovasAst()
 
     data class ExpressionStmt(
@@ -29,6 +70,11 @@ sealed class RhovasAst {
         val elseStmt: Statement?
     ) : Statement()
 
+    data class MatchStmt(
+        val args: List<Expression>,
+        val cases: List<Pair<List<Expression>, Statement>>
+    ) : Statement()
+
     data class ForStmt(
         val name: String,
         val expr: Expression,
@@ -38,6 +84,10 @@ sealed class RhovasAst {
     data class WhileStmt(
         val cond: Expression,
         val body: Statement
+    ) : Statement()
+
+    data class ReturnStmt(
+        val value: Expression
     ) : Statement()
 
     open class Expression : RhovasAst()
