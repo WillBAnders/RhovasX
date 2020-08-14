@@ -1,6 +1,7 @@
 package dev.willbanders.rhovas.x.parser
 
 import java.lang.StringBuilder
+import java.util.*
 
 data class Diagnostic(
     val source: String,
@@ -35,7 +36,8 @@ data class Diagnostic(
             .append(error.range.column + error.range.length)
             .append("]")
             .append("\n")
-        val context = (error.context + error.range).sortedBy { it.line }
+        val context = TreeSet<Range>(compareBy(Range::line))
+        context.addAll(error.context + error.range)
         val digits = context.last().line.toString().length
         context.forEach {
             val start = it.index - (it.column - 1)

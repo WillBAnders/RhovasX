@@ -1,8 +1,11 @@
 package dev.willbanders.rhovas.x.parser
 
+import java.util.*
+
 abstract class Parser<T : Token.Type>(private val lexer: Lexer<T>) {
 
     protected val tokens = TokenStream()
+    protected val context = Stack<Diagnostic.Range>()
 
     abstract fun parse(): Any
 
@@ -29,10 +32,22 @@ abstract class Parser<T : Token.Type>(private val lexer: Lexer<T>) {
         }
     }
 
-    protected fun require(condition: Boolean, message: () -> String = { "Broken parser invariant." }) {
+    protected fun require(condition: Boolean) {
+        return require(condition) { error(
+            "Broken parser invariant.",
+            "Please report this issue, this should never happen!"
+        )}
+    }
+
+    protected fun require(condition: Boolean, error: () -> Diagnostic.Error) {
         if (!condition) {
-            throw Exception(message() + " @ " + (tokens[0]?.range?.index ?: tokens[-1]!!.range.index))
+            throw ParseException(error())
         }
+    }
+
+    protected fun error(message: String, details: String) : Diagnostic.Error {
+        val range = (tokens[0] ?: tokens[-1])?.range ?: Diagnostic.Range(0, 1, 1, 0)
+        return Diagnostic.Error(message, details, range, context.toHashSet())
     }
 
     inner class TokenStream {
@@ -43,7 +58,11 @@ abstract class Parser<T : Token.Type>(private val lexer: Lexer<T>) {
         operator fun get(offset: Int): Token<T>? {
             return tokens.getOrElse(index + offset) {
                 while (index + offset >= tokens.size) {
-                    tokens.add(lexer.lexToken())
+                    try {
+                        tokens.add(lexer.lexToken())
+                    } catch (e: ParseException) {
+                        throw ParseException(e.error.copy(context = context.toHashSet()))
+                    }
                 }
                 tokens.last()
             }
