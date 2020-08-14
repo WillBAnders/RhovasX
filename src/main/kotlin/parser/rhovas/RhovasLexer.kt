@@ -6,7 +6,13 @@ import dev.willbanders.rhovas.x.parser.Token
 class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
 
     override fun lexToken(): Token<RhovasTokenType>? {
-        while (match("[ \t\n\r]")) {}
+        while (peek("[ \t\n\r]")) {
+            if (match('\n', '\r') || match('\r', '\n') || match("[\n\r]")) {
+                chars.newline()
+            } else {
+                chars.advance()
+            }
+        }
         chars.reset()
         return when {
             chars[0] == null -> null
@@ -36,15 +42,24 @@ class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
 
     private fun lexCharacter(): Token<RhovasTokenType> {
         require(match('\''))
-        require(match("[^\'\n\r]")) { "Invalid character literal." }
-        require(match('\'')) { "Unterminated character literal." }
+        require(match("[^\'\n\r]")) { error(
+            "Invalid character literal.",
+            "A character literal must start and end with a single quote (\'), contain a single character, and cannot span multiple lines."
+        )}
+        require(match('\'')) { error(
+            "Unterminated character literal.",
+            "A character literal must start and end with a single quote (\'), contain a single character, and cannot span multiple lines."
+        )}
         return chars.emit(RhovasTokenType.CHARACTER)
     }
 
     private fun lexString(): Token<RhovasTokenType> {
         require(match('\"'))
         while (match("[^\"\n\r]")) {}
-        require(match('\"')) { "Unterminated string literal." }
+        require(match('\"')) { error(
+            "Unterminated string literal.",
+            "A string literal must start and end with a double quote (\") and cannot span multiple lines."
+        )}
         return chars.emit(RhovasTokenType.STRING)
     }
 

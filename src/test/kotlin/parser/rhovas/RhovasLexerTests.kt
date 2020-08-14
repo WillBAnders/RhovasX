@@ -1,5 +1,6 @@
 package dev.willbanders.rhovas.x.parser.rhovas
 
+import dev.willbanders.rhovas.x.parser.Diagnostic
 import dev.willbanders.rhovas.x.parser.Token
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.TestInstance
@@ -84,7 +85,7 @@ class RhovasLexerTests {
     @MethodSource
     fun testOperator(test: String, input: String) {
         test(input, input.toCharArray().withIndex().map {
-            Token(RhovasTokenType.OPERATOR, it.value.toString(), it.index)
+            Token(RhovasTokenType.OPERATOR, it.value.toString(), Diagnostic.Range(it.index, 1, it.index + 1, 1))
         })
     }
 
@@ -97,7 +98,7 @@ class RhovasLexerTests {
     }
 
     private fun test(input: String, expected: RhovasTokenType) {
-        test(input, listOf(Token(expected, input, 0)))
+        test(input, listOf(Token(expected, input, Diagnostic.Range(0, 1, 1, input.length))))
     }
 
     private fun test(input: String, expected: List<Token<RhovasTokenType>>) {

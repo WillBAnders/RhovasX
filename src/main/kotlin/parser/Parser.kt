@@ -31,7 +31,7 @@ abstract class Parser<T : Token.Type>(private val lexer: Lexer<T>) {
 
     protected fun require(condition: Boolean, message: () -> String = { "Broken parser invariant." }) {
         if (!condition) {
-            throw Exception(message() + " @ " + (tokens[0]?.index ?: tokens[-1]!!.index))
+            throw Exception(message() + " @ " + (tokens[0]?.range?.index ?: tokens[-1]!!.range.index))
         }
     }
 
