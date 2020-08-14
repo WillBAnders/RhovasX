@@ -8,6 +8,10 @@ abstract class Lexer<T : Token.Type>(input: String) {
         return generateSequence { lexToken() }.toList()
     }
 
+    /*
+        lexToken() is lazy, so it's called when the parser needs another token. 
+        If the lexer is out of input, it returns null instead.
+     */
     abstract fun lexToken(): Token<T>?
 
     protected fun match(vararg objects: Any): Boolean {
