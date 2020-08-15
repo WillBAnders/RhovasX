@@ -122,4 +122,9 @@ sealed class RhovasAst {
         val args: List<Expression>
     ) : Expression()
 
+    data class DslExpr(
+        val name: String,
+        val ast: Any?
+    ) : Expression()
+
 }

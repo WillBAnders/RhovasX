@@ -1,8 +1,6 @@
 package dev.willbanders.rhovas.x.parser
 
-abstract class Lexer<T : Token.Type>(input: String) {
-
-    val chars = CharStream(input)
+abstract class Lexer<T : Token.Type>(val chars: CharStream) {
 
     fun lex(): List<Token<T>> {
         return generateSequence { lexToken() }.toList()
@@ -76,8 +74,8 @@ abstract class Lexer<T : Token.Type>(input: String) {
 
         fun reset(index: Int? = null) {
             if (index != null) {
+                column -= this.index - index
                 this.index = index
-                column -= length
             }
             length = 0
         }

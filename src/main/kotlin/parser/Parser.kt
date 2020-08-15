@@ -2,7 +2,7 @@ package dev.willbanders.rhovas.x.parser
 
 import java.util.*
 
-abstract class Parser<T : Token.Type>(private val lexer: Lexer<T>) {
+abstract class Parser<T : Token.Type>(val lexer: Lexer<T>) {
 
     protected val tokens = TokenStream()
     protected val context = Stack<Diagnostic.Range>()
@@ -61,7 +61,7 @@ abstract class Parser<T : Token.Type>(private val lexer: Lexer<T>) {
                     try {
                         tokens.add(lexer.lexToken())
                     } catch (e: ParseException) {
-                        throw ParseException(e.error.copy(context = context.toHashSet()))
+                        throw ParseException(e.error.copy(context = context.toHashSet())).initCause(e)
                     }
                 }
                 tokens.last()

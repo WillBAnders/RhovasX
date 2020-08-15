@@ -1,9 +1,12 @@
 package dev.willbanders.rhovas.x.parser.rhovas
 
+import dev.willbanders.rhovas.x.parser.Lexer
 import dev.willbanders.rhovas.x.parser.ParseException
 import dev.willbanders.rhovas.x.parser.Parser
+import dev.willbanders.rhovas.x.parser.embed.EmbedAst
+import dev.willbanders.rhovas.x.parser.embed.EmbedParser
 
-class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) {
+class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(Lexer.CharStream(input))) {
 
     override fun parse(): RhovasAst {
         return parseSource()
@@ -145,6 +148,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "for" -> parseForStmt()
             "while" -> parseWhileStmt()
             "return" -> parseReturnStmt()
+            "#" -> RhovasAst.ExpressionStmt(parseDsl())
             else -> {
                 context.push(tokens[0]!!.range)
                 val expr = parseExpression()
@@ -414,11 +418,32 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                 )}
                 RhovasAst.GroupExpr(expr)
             }
+            peek("#") -> parseDsl()
             else -> throw ParseException(error(
                 "Unexpected token `${tokens[0]!!.literal}`.",
                 "The parser expected to parse an expression, but received an unexpected token instead."
             ))
         }
+    }
+
+    private fun parseDsl(): RhovasAst.DslExpr {
+        require(match("#"))
+        context.push(tokens[-1]!!.range)
+        val name = parseIdentifier { "A DSL must start with a hashtag `#` and must be followed by a name, as in `#dsl { ... }`." }
+        require(match("{")) { error(
+            "Expected open brace.",
+            "DSL source must start with a open brace `{`, as in `#regex { /abc/i }`."
+        )}
+        lexer.chars.reset(lexer.chars.index - 1)
+        val source = try {
+            EmbedParser(lexer.chars).parse() as EmbedAst.Source
+        } catch (e: ParseException) {
+            throw ParseException(e.error.copy(context = e.error.context + context)).initCause(e)
+        }
+        lexer.chars.reset(lexer.chars.index - 1)
+        require(match("}"))
+        context.pop()
+        return RhovasAst.DslExpr(name, source)
     }
 
     private fun parseIdentifier(details: () -> String): String {
