@@ -3,7 +3,7 @@ package dev.willbanders.rhovas.x.parser.rhovas
 import dev.willbanders.rhovas.x.parser.Lexer
 import dev.willbanders.rhovas.x.parser.Token
 
-class RhovasLexer(chars: CharStream) : Lexer<RhovasTokenType>(chars) {
+class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
 
     override fun lexToken(): Token<RhovasTokenType>? {
         while (peek("[ \t\n\r]")) {

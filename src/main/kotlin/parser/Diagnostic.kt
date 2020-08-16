@@ -44,7 +44,7 @@ data class Diagnostic(
             val end = input.indexOfAny(charArrayOf('\n', '\r'), it.index + it.length)
             sb.append(it.line.toString().padStart(digits + 1))
                 .append(" | ")
-                .append(input.substring(start, end))
+                .append(input.substring(start, if (end != -1) end else input.length))
                 .append("\n")
             if (it.line == error.range.line) {
                 sb.append("".padStart(digits + 1))

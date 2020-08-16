@@ -1,5 +1,7 @@
 package dev.willbanders.rhovas.x.parser
 
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.util.*
 
 abstract class Parser<T : Token.Type>(val lexer: Lexer<T>) {
@@ -33,10 +35,14 @@ abstract class Parser<T : Token.Type>(val lexer: Lexer<T>) {
     }
 
     protected fun require(condition: Boolean) {
-        return require(condition) { error(
+        return require(condition) {
+            val writer = StringWriter()
+            Exception().printStackTrace(PrintWriter(writer))
+            error(
             "Broken parser invariant.",
-            "Please report this issue, this should never happen!"
-        )}
+                "Please report this issue, this should never happen!\n$writer"
+            )
+        }
     }
 
     protected fun require(condition: Boolean, error: () -> Diagnostic.Error) {
@@ -69,6 +75,7 @@ abstract class Parser<T : Token.Type>(val lexer: Lexer<T>) {
         }
 
         fun advance() {
+            require(this[0] != null)
             index++
         }
 

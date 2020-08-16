@@ -1,6 +1,11 @@
 package dev.willbanders.rhovas.x.parser
 
-abstract class Lexer<T : Token.Type>(val chars: CharStream) {
+abstract class Lexer<T : Token.Type>(
+    input: String,
+    state: Diagnostic.Range = Diagnostic.Range(0, 1, 1, 0)
+) {
+
+    val chars: CharStream = CharStream(input).apply { reset(state) }
 
     fun lex(): List<Token<T>> {
         return generateSequence { lexToken() }.toList()
@@ -34,7 +39,7 @@ abstract class Lexer<T : Token.Type>(val chars: CharStream) {
     protected fun require(condition: Boolean) {
         return require(condition) { error(
             "Broken lexer invariant.",
-            "Please report this issue, this should never happen!"
+            "Please report this issue, this should never happen!\n" + Exception().toString()
         )}
     }
 
@@ -48,7 +53,7 @@ abstract class Lexer<T : Token.Type>(val chars: CharStream) {
         return Diagnostic.Error(message, details, chars.range, emptySet())
     }
 
-    class CharStream(private val input: String) {
+    inner class CharStream(val input: String) {
 
         var index = 0
         var line = 1
@@ -62,6 +67,7 @@ abstract class Lexer<T : Token.Type>(val chars: CharStream) {
         }
 
         fun advance() {
+            require(this[0] != null)
             index++
             column++
             length++
@@ -72,12 +78,13 @@ abstract class Lexer<T : Token.Type>(val chars: CharStream) {
             column = 1
         }
 
-        fun reset(index: Int? = null) {
-            if (index != null) {
-                column -= this.index - index
-                this.index = index
+        fun reset(state: Diagnostic.Range? = null) {
+            if (state != null) {
+                index = state.index
+                line = state.line
+                column = state.column
             }
-            length = 0
+            length = state?.length ?: 0
         }
 
         fun <T : Token.Type> emit(type: T): Token<T> {

@@ -4,7 +4,7 @@ import dev.willbanders.rhovas.x.parser.Lexer
 import dev.willbanders.rhovas.x.parser.Parser
 import java.lang.StringBuilder
 
-class EmbedParser(chars: Lexer.CharStream) : Parser<EmbedTokenType>(EmbedLexer(chars)) {
+class EmbedParser(chars: Lexer<*>.CharStream) : Parser<EmbedTokenType>(EmbedLexer(chars)) {
 
     override fun parse(): EmbedAst {
         require(match("{"))
@@ -22,6 +22,10 @@ class EmbedParser(chars: Lexer.CharStream) : Parser<EmbedTokenType>(EmbedLexer(c
                         sb.append(literal.substring(indent.length))
                     }
                 } else {
+                    require(tokens[0] != null) { error(
+                        "Unexpected end of file",
+                        "Embed source should end with a closing brace `}`. This can also be caused by incorrect indentation."
+                    )}
                     tokens.advance()
                     sb.append(tokens[-1]!!.literal)
                 }
@@ -31,7 +35,7 @@ class EmbedParser(chars: Lexer.CharStream) : Parser<EmbedTokenType>(EmbedLexer(c
         }
         require(match("}")) { error(
                 "Expected close brace.",
-                "Embed source should end with a closing brace."
+                "Embed source should end with a closing brace `}`."
         )}
         return EmbedAst.Source(sb.toString())
     }

@@ -3,7 +3,7 @@ package dev.willbanders.rhovas.x.parser.embed
 import dev.willbanders.rhovas.x.parser.Lexer
 import dev.willbanders.rhovas.x.parser.Token
 
-class EmbedLexer(chars: CharStream) : Lexer<EmbedTokenType>(chars) {
+class EmbedLexer(chars: Lexer<*>.CharStream) : Lexer<EmbedTokenType>(chars.input, chars.range) {
 
     override fun lexToken(): Token<EmbedTokenType>? {
         return when {
