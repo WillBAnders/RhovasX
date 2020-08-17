@@ -1,15 +1,12 @@
 package dev.willbanders.rhovas.x.interpreter.rhovas
 
 import dev.willbanders.rhovas.x.interpreter.Interpreter
-import dev.willbanders.rhovas.x.interpreter.Scope
+import dev.willbanders.rhovas.x.interpreter.Environment
 import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst
-import kotlin.reflect.KMutableProperty1
-import kotlin.reflect.KProperty1
-import kotlin.reflect.full.*
 
-class RhovasInterpreter : Interpreter<RhovasAst>() {
+class RhovasInterpreter(env: Environment) : Interpreter<RhovasAst>() {
 
-    private var scope = Scope()
+    private var scope = Environment.Scope(env.scope)
 
     override fun eval(ast: RhovasAst): Any? {
         return when (ast) {
@@ -44,7 +41,7 @@ class RhovasInterpreter : Interpreter<RhovasAst>() {
         src.impts.forEach { eval(it) }
         src.mbrs.forEach { eval(it) }
         src.mbrs.filterIsInstance<RhovasAst.PropertyMbr>().forEach { prop ->
-            scope.variables[prop.name]!!.value = prop.value?.let { eval(it) }
+            scope.lookupVariable(prop.name)!!.value = prop.value?.let { eval(it) }
         }
         val main = src.mbrs.find {it is RhovasAst.FunctionMbr && it.name == "main" }
         if (main != null) {
@@ -65,11 +62,7 @@ class RhovasInterpreter : Interpreter<RhovasAst>() {
     }
 
     private fun eval(mbr: RhovasAst.PropertyMbr) {
-        scope.variables[mbr.name] = Scope.Variable(
-            mbr.mut,
-            mbr.name,
-            null
-        )
+        scope.defineVariable(mbr.name,null)
     }
 
     private fun eval(mbr: RhovasAst.ConstructorMbr) {
@@ -77,22 +70,16 @@ class RhovasInterpreter : Interpreter<RhovasAst>() {
     }
 
     private fun eval(mbr: RhovasAst.FunctionMbr) {
-        scope.functions[Pair(mbr.name, mbr.params.size)] = Scope.Function(mbr.name, mbr.params.size) {
-            scope = Scope(scope)
-            for (i in it.indices) {
-                scope.variables[mbr.params[i]] = Scope.Variable(
-                    false,
-                    mbr.params[i],
-                    it[i]
-                )
+        val closure = scope
+        scope.defineFunction(mbr.name, mbr.params.size) { args ->
+            scoped(closure) {
+                args.indices.forEach { scope.defineVariable(mbr.params[it], args[it]) }
+                try {
+                    eval(mbr.body)
+                } catch (e: Return) {
+                    e.value
+                }
             }
-            val res = try {
-                eval(mbr.body)
-            } catch (e: Return) {
-                e.value
-            }
-            scope = scope.parent!!
-            res
         }
     }
 
@@ -101,30 +88,21 @@ class RhovasInterpreter : Interpreter<RhovasAst>() {
     }
 
     private fun eval(ast: RhovasAst.BlockStmt) {
-        scope = Scope(scope)
-        ast.stmts.forEach { eval(it) }
-        scope = scope.parent!!
+        scoped(Environment.Scope(scope)) {
+            ast.stmts.forEach { eval(it) }
+        }
     }
 
     private fun eval(ast: RhovasAst.DeclarationStmt) {
-        scope.variables[ast.name] = Scope.Variable(
-            ast.mut,
-            ast.name,
-            ast.value?.let { eval(it) }
-        )
+        scope.defineVariable(ast.name, ast.value?.let { eval(it) })
     }
 
     private fun eval(ast: RhovasAst.AssignmentStmt) {
         if (ast.rec is RhovasAst.AccessExpr) {
             if (ast.rec.rec == null) {
-                scope.getVariable(ast.rec.name).value = eval(ast.value)
-            } else {
-                val rec = eval(ast.rec.rec) ?: "Cannot access field ${ast.rec.name} on null"
-                val prop = rec::class.declaredMemberProperties
-                    .find { it.name == ast.rec.name }
-                    ?: throw Exception("Undefined field ${ast.rec.name} on receiver $rec.")
-                (prop as KMutableProperty1<Any, Any?>).set(rec, eval(ast.value))
-            }
+                val variable = scope.lookupVariable(ast.rec.name) ?: throw Exception("Undefined variable ${ast.rec.name}.")
+                variable.value = eval(ast.value)
+            } else TODO("Assignment with receiver")
         } else {
             throw Exception("Assignment receiver must be an access expression.")
         }
@@ -153,15 +131,13 @@ class RhovasInterpreter : Interpreter<RhovasAst>() {
     }
 
     private fun eval(ast: RhovasAst.ForStmt) {
-        scope = Scope(scope)
         when (val expr = eval(ast.expr)) {
-            is Iterable<*> -> expr.forEach {
-                scope.variables[ast.name] = Scope.Variable(false, ast.name, it)
+            is Iterable<*> -> scoped(Environment.Scope(scope)) { expr.forEach {
+                scope.defineVariable(ast.name, it)
                 eval(ast.body)
-            }
+            } }
             else -> throw Exception("For loop expression must evalute to an Iterable, received $expr.")
         }
-        scope = scope.parent!!
     }
 
     private fun eval(ast: RhovasAst.WhileStmt) {
@@ -272,38 +248,18 @@ class RhovasInterpreter : Interpreter<RhovasAst>() {
 
     private fun eval(ast: RhovasAst.AccessExpr): Any? {
         return when (val rec = ast.rec?.let { eval(it) }) {
-            null -> scope.getVariable(ast.name).value
-            else -> {
-                val prop = rec::class.declaredMemberProperties
-                    .find { it.name == ast.name }
-                    ?: throw Exception("Undefined field ${ast.name} on receiver $rec.")
-                (prop as KProperty1<Any, Any?>).get(rec)
-            }
+            null -> scope.lookupVariable(ast.name)?.value
+                ?: throw Exception("Undefined variable ${ast.name}.");
+            else -> TODO("Access with receiver.")
         }
     }
 
     private fun eval(ast: RhovasAst.FunctionExpr): Any? {
         return when (val rec = ast.rec?.let { eval(it) }) {
-            null -> {
-                val func = scope.getFunction(ast.name, ast.args.size)
-                func.apply(ast.args.map { eval(it) })
-            }
-            else -> {
-                val func = rec::class.declaredFunctions
-                    .find { it.name == ast.name && (it.parameters.size == ast.args.size || it.instanceParameter != null && it.parameters.size == ast.args.size + 1) }
-                if (func != null) {
-                    if (func.instanceParameter != null) {
-                        func.call()
-                    } else {
-                        func.call(*((listOf(rec) + ast.args.map { eval(it) }).toTypedArray()))
-                    }
-                } else {
-                    val method = rec.javaClass.declaredMethods
-                        .find { it.name == ast.name && it.parameters.size == ast.args.size }
-                        ?: throw Exception("Undefined function ${ast.name} on receiver $rec.")
-                    method.invoke(rec, *(ast.args.map { eval(it) }.toTypedArray()))
-                }
-            }
+            null -> scope.lookupFunction(ast.name, ast.args.size)
+                ?.invoke?.invoke(ast.args.map { eval(it) })
+                ?: throw Exception("Undefined function ${ast.name}/${ast.args.size}.")
+            else -> TODO("Function with receiver.")
         }
     }
 
@@ -311,12 +267,14 @@ class RhovasInterpreter : Interpreter<RhovasAst>() {
         TODO()
     }
 
-    data class Return(val value: Any?) : Exception()
-
-    init {
-        scope.functions[Pair("print", 1)] = Scope.Function("print", 1) {
-            println(it[0])
-        }
+    private fun <T> scoped(scope: Environment.Scope, block: () -> T): T {
+        val current = this.scope
+        this.scope = scope
+        val result = block()
+        this.scope = current
+        return result
     }
+
+    data class Return(val value: Any?) : Exception()
 
 }
