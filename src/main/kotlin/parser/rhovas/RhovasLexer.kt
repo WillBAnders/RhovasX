@@ -8,6 +8,7 @@ class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
     override fun lexToken(): Token<RhovasTokenType>? {
         while (peek("[ \t\n\r]")) {
             if (match('\n', '\r') || match('\r', '\n') || match("[\n\r]")) {
+                chars.reset()
                 chars.newline()
             } else {
                 chars.advance()

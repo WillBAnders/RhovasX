@@ -1,11 +1,8 @@
 package dev.willbanders.rhovas.x.parser
 
-abstract class Lexer<T : Token.Type>(
-    input: String,
-    state: Diagnostic.Range = Diagnostic.Range(0, 1, 1, 0)
-) {
+abstract class Lexer<T : Token.Type>(input: String) {
 
-    val chars: CharStream = CharStream(input).apply { reset(state) }
+    val chars: CharStream = CharStream(input)
 
     fun lex(): List<Token<T>> {
         return generateSequence { lexToken() }.toList()
@@ -55,40 +52,41 @@ abstract class Lexer<T : Token.Type>(
 
     inner class CharStream(val input: String) {
 
-        var index = 0
-        var line = 1
-        var column = 1
-        var length = 0
+        private var index = 0
+        private var line = 1
+        private var column = 1
+        private var length = 0
 
-        val range get() = Diagnostic.Range(index - length, line, column - length, length)
+        val range get() = Diagnostic.Range(index, line, column, length)
 
         operator fun get(offset: Int): Char? {
-            return input.getOrNull(index + offset)
+            return input.getOrNull(index + length + offset)
         }
 
         fun advance() {
             require(this[0] != null)
-            index++
-            column++
-            length++
+            length ++
         }
 
         fun newline() {
+            require(length == 0)
             line++
             column = 1
         }
 
-        fun reset(state: Diagnostic.Range? = null) {
-            if (state != null) {
-                index = state.index
-                line = state.line
-                column = state.column
-            }
-            length = state?.length ?: 0
+        fun reset(range: Diagnostic.Range? = null) {
+            index = range?.index ?: index + length
+            line = range?.line ?: line
+            column = range?.column ?: column + length
+            length = range?.length ?: 0
         }
 
         fun <T : Token.Type> emit(type: T): Token<T> {
-            return Token(type, input.substring(index - length, index), range).also { reset() }
+            return Token(type, input.substring(index, index + length), range).also {
+                index += length
+                column += length
+                length = 0
+            }
         }
 
     }

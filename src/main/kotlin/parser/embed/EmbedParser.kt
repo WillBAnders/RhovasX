@@ -1,10 +1,9 @@
 package dev.willbanders.rhovas.x.parser.embed
 
-import dev.willbanders.rhovas.x.parser.Lexer
 import dev.willbanders.rhovas.x.parser.Parser
 import java.lang.StringBuilder
 
-class EmbedParser(chars: Lexer<*>.CharStream) : Parser<EmbedTokenType>(EmbedLexer(chars)) {
+class EmbedParser(input: String) : Parser<EmbedTokenType>(EmbedLexer(input)) {
 
     override fun parse(): EmbedAst {
         require(match("{"))

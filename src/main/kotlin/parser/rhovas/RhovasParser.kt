@@ -417,18 +417,14 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "Expected opening brace.",
             "DSL source must start with a opening brace `{`, as in `#regex { /abc/i }`."
         )}
-        with(lexer.chars.range) {
-            lexer.chars.reset(copy(index = index - 1, column = column - 1, length = 0))
-        }
-        val parser = EmbedParser(lexer.chars)
+        val parser = EmbedParser(lexer.chars.input)
+        parser.lexer.chars.reset(with(lexer.chars.range) { copy(index = index - 1, column = column - 1, length = 0) })
         val ast = try {
             parser.parse()
         } catch (e: ParseException) {
             throw ParseException(e.error.copy(context = e.error.context + context)).initCause(e)
         }
-        with(parser.lexer.chars.range) {
-            lexer.chars.reset(copy(index = index - 1, column = column - 1, length = 0))
-        }
+        lexer.chars.reset(with(parser.lexer.chars.range) { copy(index = index - 1, column = column - 1, length = 0) })
         require(match("}"))
         context.pop()
         return RhovasAst.DslExpr(name, ast)
@@ -441,12 +437,8 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
 
     private fun requireSemicolon(details: () -> String) {
         require(match(";")) {
-            val range = tokens[-1]!!.range
-            Diagnostic.Error("Expected semicolon.", details(), range.copy(
-                index = range.index + range.length,
-                column = range.column + range.length,
-                length = 1
-            ), context.toHashSet())
+            val range = with(tokens[-1]!!.range) { copy(index = index + length, column = column + length, length = 1) }
+            Diagnostic.Error("Expected semicolon.", details(), range, context.toHashSet())
         }
     }
 
