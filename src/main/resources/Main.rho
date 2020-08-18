@@ -1,0 +1,13 @@
+val factorial = factorial(7);
+
+func main() {
+    print("Hello, World!");
+    print("Factorial: " + factorial);
+}
+
+func factorial(num) {
+    match (num) {
+        0, 1: return 1;
+        else: return num * factorial(num - 1);
+    }
+}

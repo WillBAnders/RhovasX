@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.4.0"
+    application
 }
 
 group = "dev.willbanders.rhovas.x"
@@ -25,4 +26,8 @@ tasks {
     compileTestKotlin {
         kotlinOptions.jvmTarget = "1.8"
     }
+}
+
+application {
+    mainClassName = "dev.willbanders.rhovas.x.MainKt"
 }
