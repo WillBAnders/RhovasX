@@ -92,8 +92,16 @@ sealed class RhovasAst {
 
     open class Expression : RhovasAst()
 
-    data class LiteralExpr(
+    data class ScalarLiteralExpr(
         val obj: Any?
+    ) : Expression()
+
+    data class ListLiteralExpr(
+        val list: List<Expression>
+    ) : Expression()
+
+    data class MapLiteralExpr(
+        val map: Map<String, Expression>
     ) : Expression()
 
     data class GroupExpr(

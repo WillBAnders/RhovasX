@@ -1,10 +1,8 @@
 package dev.willbanders.rhovas.x.parser.rhovas
 
 import dev.willbanders.rhovas.x.parser.Diagnostic
-import dev.willbanders.rhovas.x.parser.Lexer
 import dev.willbanders.rhovas.x.parser.ParseException
 import dev.willbanders.rhovas.x.parser.Parser
-import dev.willbanders.rhovas.x.parser.embed.EmbedAst
 import dev.willbanders.rhovas.x.parser.embed.EmbedParser
 
 class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) {
@@ -366,12 +364,12 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "The parser reached the end of the input, but expected to parse an expression such as `0`, `x`, or `f()`."
         )}
         return when {
-            match("null") -> RhovasAst.LiteralExpr(null)
-            match(listOf("true", "false")) -> RhovasAst.LiteralExpr(tokens[-1]!!.literal.toBoolean())
-            match(RhovasTokenType.INTEGER) -> RhovasAst.LiteralExpr(tokens[-1]!!.literal.toInt())
-            match(RhovasTokenType.DECIMAL) -> RhovasAst.LiteralExpr(tokens[-1]!!.literal.toDouble())
-            match(RhovasTokenType.CHARACTER) -> RhovasAst.LiteralExpr(tokens[-1]!!.literal[1])
-            match(RhovasTokenType.STRING) -> RhovasAst.LiteralExpr(tokens[-1]!!.literal.removeSurrounding("\""))
+            match("null") -> RhovasAst.ScalarLiteralExpr(null)
+            match(listOf("true", "false")) -> RhovasAst.ScalarLiteralExpr(tokens[-1]!!.literal.toBoolean())
+            match(RhovasTokenType.INTEGER) -> RhovasAst.ScalarLiteralExpr(tokens[-1]!!.literal.toInt())
+            match(RhovasTokenType.DECIMAL) -> RhovasAst.ScalarLiteralExpr(tokens[-1]!!.literal.toDouble())
+            match(RhovasTokenType.CHARACTER) -> RhovasAst.ScalarLiteralExpr(tokens[-1]!!.literal[1])
+            match(RhovasTokenType.STRING) -> RhovasAst.ScalarLiteralExpr(tokens[-1]!!.literal.removeSurrounding("\""))
             match(RhovasTokenType.IDENTIFIER) -> {
                 val name = tokens[-1]!!.literal
                 context.push(tokens[-1]!!.range)
@@ -400,6 +398,35 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                     "A group expression must be surrounded by parentheses `()`, as in `(variable)` and `(function())`."
                 )}
                 RhovasAst.GroupExpr(expr)
+            }
+            match("[") -> {
+                val list = mutableListOf<RhovasAst.Expression>()
+                while (!match("]")) {
+                    list.add(parseExpression())
+                    require(peek("]") || match(",")) { error(
+                        "Expected closing square bracket or comma.",
+                        "A list literal must be followed by a closing square bracket `]` or comma `,` for additional arguments, as in `[]` or `[x, y, z]`."
+                    )}
+                }
+                RhovasAst.ListLiteralExpr(list)
+            }
+            match("{") -> {
+                val map = mutableMapOf<String, RhovasAst.Expression>()
+                while (!match("}")) {
+                    val key = parseIdentifier { "An entry is a map literal must start with a key, as in `{x: 0}`." }
+                    context.push(tokens[-1]!!.range)
+                    require(match("=")) { error(
+                        "Expected equal sign.",
+                        "The value of a map entry must be followed by an equal sign `=`, as in `{x: 0}`."
+                    )}
+                    map[key] = parseExpression()
+                    require(peek("}") || match(",")) { error(
+                        "Expected closing brace or comma.",
+                        "A map literal must be followed by a closing brace `}` or comma `,` for additional arguments, as in `{}` or `{x: 0, y: 1, z: 2}`."
+                    )}
+                    context.pop()
+                }
+                RhovasAst.MapLiteralExpr(map)
             }
             peek("#") -> parseDsl()
             else -> throw ParseException(error(
