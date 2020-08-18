@@ -37,23 +37,23 @@ class Environment {
     data class Type(
         val name: String,
         val static: Scope,
-        val instance: Scope
+        val instance: Scope,
     )
 
     data class Variable(
         val name: String,
-        var value: Any?
+        var value: Any?,
     )
 
     data class Function(
         val name: String,
         val arity: Int,
-        val invoke: (List<Any?>) -> Any?
+        val invoke: (List<Any?>) -> Any?,
     )
 
     data class Object(
         val type: Type,
-        val scope: Scope
+        val scope: Scope,
     )
 
 }

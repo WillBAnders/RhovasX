@@ -6,21 +6,21 @@ import java.util.*
 data class Diagnostic(
     val source: String,
     val input: String,
-    val error: Error
+    val error: Error,
 ) {
 
     data class Error(
         val message: String,
         val details: String,
         val range: Range,
-        val context: Set<Range>
+        val context: Set<Range>,
     )
 
     data class Range(
         val index: Int,
         val line: Int,
         val column: Int,
-        val length: Int
+        val length: Int,
     )
 
     override fun toString(): String {

@@ -187,10 +187,10 @@ class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>()
     }
 
     private fun eval(ast: RhovasAst.WhileStmt) {
-        loop@while (true) {
+        while (true) {
             when (val cond = eval(ast.cond)) {
                 true -> eval(ast.body)
-                false -> break@loop
+                false -> break
                 else -> throw Exception("If condition must evaluate to a Boolean, received $cond.")
             }
         }
