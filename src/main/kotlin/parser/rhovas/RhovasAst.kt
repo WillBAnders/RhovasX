@@ -1,10 +1,12 @@
 package dev.willbanders.rhovas.x.parser.rhovas
 
+import dev.willbanders.rhovas.x.parser.embed.EmbedAst
+
 sealed class RhovasAst {
 
     data class Source(
         val impts: List<Import>,
-        val mbrs: List<Member>,
+        val mbrs: List<Mbr>,
     ) : RhovasAst()
 
     data class Import(
@@ -12,141 +14,225 @@ sealed class RhovasAst {
         val name: String?,
     ) : RhovasAst()
 
-    open class Member : RhovasAst()
+    sealed class Mbr : RhovasAst() {
 
-    open class Component : Member()
+        sealed class Cmpt : Mbr() {
 
-    data class ClassCmpt(
-        val name: String,
-        val mbrs: List<Member>,
-    ) : Component()
+            data class Class(
+                val name: String,
+                val mbrs: List<Mbr>,
+            ) : Cmpt()
 
-    data class InterfaceCmpt(
-        val name: String,
-        val mbrs: List<Member>,
-    ) : Component()
+            data class Interface(
+                val name: String,
+                val mbrs: List<Mbr>,
+            ) : Cmpt()
 
-    data class PropertyMbr(
-        val mut: Boolean,
-        val name: String,
-        val value: Expression?,
-    ) : Member()
+        }
 
-    data class ConstructorMbr(
-        val params: List<String>,
-        val body: Statement,
-    ) : Member()
+        data class Property(
+            val mut: Boolean,
+            val name: String,
+            val value: Expr?,
+        ) : Mbr()
 
-    data class FunctionMbr(
-        val name: String,
-        val params: List<String>,
-        val body: Statement,
-    ) : Member()
+        data class Constructor(
+            val params: List<String>,
+            val body: Stmt,
+        ) : Mbr()
 
-    open class Statement : RhovasAst()
+        data class Function(
+            val name: String,
+            val params: List<String>,
+            val body: Stmt,
+        ) : Mbr()
 
-    data class ExpressionStmt(
-        val expr: Expression,
-    ) : Statement()
+    }
 
-    data class BlockStmt(
-        val stmts: List<Statement>,
-    ) : Statement()
+    sealed class Stmt : RhovasAst() {
 
-    data class DeclarationStmt(
-        val mut: Boolean,
-        val name: String,
-        val value: Expression?,
-    ) : Statement()
+        data class Expression(
+            val expr: Expr,
+        ) : Stmt()
 
-    data class AssignmentStmt(
-        val rec: Expression,
-        val value: Expression
-    ) : Statement()
+        data class Block(
+            val stmts: List<Stmt>,
+        ) : Stmt()
 
-    data class IfStmt(
-        val cond: Expression,
-        val ifStmt: Statement,
-        val elseStmt: Statement?,
-    ) : Statement()
+        data class Declaration(
+            val mut: Boolean,
+            val name: String,
+            val value: Expr?,
+        ) : Stmt()
 
-    data class MatchStmt(
-        val args: List<Expression>,
-        val cases: List<Pair<List<Expression>, Statement>>,
-    ) : Statement()
+        data class Assignment(
+            val rec: Expr,
+            val value: Expr
+        ) : Stmt()
 
-    data class ForStmt(
-        val name: String,
-        val expr: Expression,
-        val body: Statement,
-    ) : Statement()
+        data class If(
+            val cond: Expr,
+            val ifStmt: Stmt,
+            val elseStmt: Stmt?,
+        ) : Stmt()
 
-    data class WhileStmt(
-        val cond: Expression,
-        val body: Statement,
-    ) : Statement()
+        data class Match(
+            val args: List<Expr>,
+            val cases: List<Pair<List<Expr>, Stmt>>,
+        ) : Stmt()
 
-    data class ReturnStmt(
-        val value: Expression,
-    ) : Statement()
+        data class For(
+            val name: String,
+            val expr: Expr,
+            val body: Stmt,
+        ) : Stmt()
 
-    open class Expression : RhovasAst()
+        data class While(
+            val cond: Expr,
+            val body: Stmt,
+        ) : Stmt()
 
-    data class ScalarLiteralExpr(
-        val obj: Any?,
-    ) : Expression()
+        data class Return(
+            val value: Expr,
+        ) : Stmt()
 
-    data class AtomLiteralExpr(
-        val name: String,
-    ) : Expression()
+    }
 
-    data class ListLiteralExpr(
-        val list: List<Expression>,
-    ) : Expression()
+    sealed class Expr : RhovasAst() {
 
-    data class MapLiteralExpr(
-        val map: Map<String, Expression>,
-    ) : Expression()
+        data class Literal(
+            val literal: Any?,
+        ) : Expr() {
 
-    data class GroupExpr(
-        val expr: Expression,
-    ) : Expression()
+            data class Atom(val name: String)
 
-    data class UnaryExpr(
-        val op: String,
-        val expr: Expression,
-    ) : Expression()
+        }
 
-    data class BinaryExpr(
-        val left: Expression,
-        val op: String,
-        val right: Expression,
-    ) : Expression()
+        data class Group(
+            val expr: Expr,
+        ) : Expr()
 
-    data class AccessExpr(
-        val rec: Expression?,
-        val name: String,
-    ) : Expression()
+        data class Unary(
+            val op: String,
+            val expr: Expr,
+        ) : Expr()
 
-    data class IndexExpr(
-        val rec: Expression,
-        val args: List<Expression>,
-    ) : Expression()
+        data class Binary(
+            val left: Expr,
+            val op: String,
+            val right: Expr,
+        ) : Expr()
 
-    data class FunctionExpr(
-        val rec: Expression?,
-        val name: String,
-        val args: List<Expression>,
-    ) : Expression()
+        data class Access(
+            val rec: Expr?,
+            val name: String,
+        ) : Expr()
 
-    data class LambdaExpr(
-        val params: List<String>,
-        val body: Statement,
-    ) : Expression()
+        data class Index(
+            val rec: Expr,
+            val args: List<Expr>,
+        ) : Expr()
 
-    data class DslExpr(
-        val name: String,
-        val ast: Any?,
-    ) : Expression()
+        data class Function(
+            val rec: Expr?,
+            val name: String,
+            val args: List<Expr>,
+        ) : Expr()
+
+        data class Lambda(
+            val params: List<String>,
+            val body: Stmt,
+        ) : Expr()
+
+        data class Dsl(
+            val name: String,
+            val ast: EmbedAst,
+        ) : Expr()
+
+    }
+
+    abstract class Visitor<T> {
+
+        fun visit(ast: RhovasAst): T {
+            return when (ast) {
+                is Source -> visit(ast)
+                is Import -> visit(ast)
+                is Mbr.Cmpt.Class -> visit(ast)
+                is Mbr.Cmpt.Interface -> visit(ast)
+                is Mbr.Property -> visit(ast)
+                is Mbr.Constructor -> visit(ast)
+                is Mbr.Function -> visit(ast)
+                is Stmt.Expression -> visit(ast)
+                is Stmt.Block -> visit(ast)
+                is Stmt.Declaration -> visit(ast)
+                is Stmt.Assignment -> visit(ast)
+                is Stmt.If -> visit(ast)
+                is Stmt.Match -> visit(ast)
+                is Stmt.For -> visit(ast)
+                is Stmt.While -> visit(ast)
+                is Stmt.Return -> visit(ast)
+                is Expr.Literal -> visit(ast)
+                is Expr.Group -> visit(ast)
+                is Expr.Unary -> visit(ast)
+                is Expr.Binary -> visit(ast)
+                is Expr.Access -> visit(ast)
+                is Expr.Index -> visit(ast)
+                is Expr.Function -> visit(ast)
+                is Expr.Lambda -> visit(ast)
+                is Expr.Dsl -> visit(ast)
+            }
+        }
+
+        protected abstract fun visit(ast: Source): T
+
+        protected abstract fun visit(ast: Import): T
+
+        protected abstract fun visit(ast: Mbr.Cmpt.Class): T
+
+        protected abstract fun visit(ast: Mbr.Cmpt.Interface): T
+
+        protected abstract fun visit(ast: Mbr.Property): T
+
+        protected abstract fun visit(ast: Mbr.Constructor): T
+
+        protected abstract fun visit(ast: Mbr.Function): T
+
+        protected abstract fun visit(ast: Stmt.Expression): T
+
+        protected abstract fun visit(ast: Stmt.Block): T
+
+        protected abstract fun visit(ast: Stmt.Declaration): T
+
+        protected abstract fun visit(ast: Stmt.Assignment): T
+
+        protected abstract fun visit(ast: Stmt.If): T
+
+        protected abstract fun visit(ast: Stmt.Match): T
+
+        protected abstract fun visit(ast: Stmt.For): T
+
+        protected abstract fun visit(ast: Stmt.While): T
+
+        protected abstract fun visit(ast: Stmt.Return): T
+
+        protected abstract fun visit(ast: Expr.Literal): T
+
+        protected abstract fun visit(ast: Expr.Group): T
+
+        protected abstract fun visit(ast: Expr.Unary): T
+
+        protected abstract fun visit(ast: Expr.Binary): T
+
+        protected abstract fun visit(ast: Expr.Access): T
+
+        protected abstract fun visit(ast: Expr.Index): T
+
+        protected abstract fun visit(ast: Expr.Function): T
+
+        protected abstract fun visit(ast: Expr.Lambda): T
+
+        protected abstract fun visit(ast: Expr.Dsl): T
+
+    }
 
 }
