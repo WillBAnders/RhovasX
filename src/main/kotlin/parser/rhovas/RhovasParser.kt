@@ -391,6 +391,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                 context.pop()
                 expr
             }
+            match(":", RhovasTokenType.IDENTIFIER) -> RhovasAst.AtomLiteralExpr(tokens[-1]!!.literal)
             match("(") -> {
                 val expr = parseExpression()
                 require(match(")")) { error(

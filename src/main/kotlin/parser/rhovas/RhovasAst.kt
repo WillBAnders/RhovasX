@@ -96,6 +96,10 @@ sealed class RhovasAst {
         val obj: Any?,
     ) : Expression()
 
+    data class AtomLiteralExpr(
+        val name: String,
+    ) : Expression()
+
     data class ListLiteralExpr(
         val list: List<Expression>,
     ) : Expression()

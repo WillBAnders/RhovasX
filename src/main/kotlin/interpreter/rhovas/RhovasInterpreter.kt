@@ -28,6 +28,7 @@ class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>()
             is RhovasAst.WhileStmt -> eval(ast)
             is RhovasAst.ReturnStmt -> eval(ast)
             is RhovasAst.ScalarLiteralExpr -> eval(ast)
+            is RhovasAst.AtomLiteralExpr -> eval(ast)
             is RhovasAst.ListLiteralExpr -> eval(ast)
             is RhovasAst.MapLiteralExpr -> eval(ast)
             is RhovasAst.GroupExpr -> eval(ast)
@@ -202,6 +203,10 @@ class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>()
 
     private fun eval(ast: RhovasAst.ScalarLiteralExpr): Any? {
         return ast.obj
+    }
+
+    private fun eval(ast: RhovasAst.AtomLiteralExpr): Any? {
+        return ast
     }
 
     private fun eval(ast: RhovasAst.ListLiteralExpr): Any? {
