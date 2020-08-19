@@ -334,12 +334,28 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
     private fun parseSecondaryExpr(): RhovasAst.Expression {
         var expr = parsePrimaryExpr()
         repeat(2) { context.push(tokens[-1]!!.range) }
-        while (match(".")) {
-            val name = parseIdentifier { "A field access or method call requires a name, as in `x.y` or `x.z()`." }
-            val token = tokens[-1]!!
-            expr = if (peek(listOf("(", "{"))) parseFunctionExpr(expr, name) else RhovasAst.AccessExpr(expr, name)
+        while (true) {
+            val token = tokens[0]
+            expr = when {
+                match(".") -> {
+                    val name = parseIdentifier { "A field access or method call requires a name, as in `x.y` or `x.z()`." }
+                    if (peek(listOf("(", "{"))) parseFunctionExpr(expr, name) else RhovasAst.AccessExpr(expr, name)
+                }
+                match("[") -> {
+                    val args = mutableListOf<RhovasAst.Expression>()
+                    while (!match("]")) {
+                        args.add(parseExpression())
+                        require(peek("]") || match(",")) { error(
+                            "Expected closing square bracket or comma.",
+                            "A function argument must be followed by a closing square bracket `]` or comma `,` for additional arguments, as in `array[0]` and `pixels[x, y]`."
+                        )}
+                    }
+                    RhovasAst.IndexExpr(expr, args)
+                }
+                else -> break
+            }
             context.pop()
-            context.push(token.range)
+            context.push(token!!.range)
         }
         repeat(2) { context.pop() }
         return expr

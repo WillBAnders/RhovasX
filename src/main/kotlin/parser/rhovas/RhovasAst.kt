@@ -128,6 +128,11 @@ sealed class RhovasAst {
         val name: String,
     ) : Expression()
 
+    data class IndexExpr(
+        val rec: Expression,
+        val args: List<Expression>,
+    ) : Expression()
+
     data class FunctionExpr(
         val rec: Expression?,
         val name: String,

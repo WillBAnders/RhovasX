@@ -35,6 +35,7 @@ class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>()
             is RhovasAst.UnaryExpr -> eval(ast)
             is RhovasAst.BinaryExpr -> eval(ast)
             is RhovasAst.AccessExpr -> eval(ast)
+            is RhovasAst.IndexExpr -> eval(ast)
             is RhovasAst.FunctionExpr -> eval(ast)
             is RhovasAst.LambdaExpr -> eval(ast)
             is RhovasAst.DslExpr -> eval(ast)
@@ -150,6 +151,14 @@ class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>()
                 } else {
                     TODO("Assignment on builtin object?")
                 }
+            }
+        } else if (ast.rec is RhovasAst.IndexExpr) {
+            when (val rec = eval(ast.rec.rec)) {
+                is List<*> -> {
+                    if (ast.rec.args.size != 1) throw Exception("Undefined function index[]=/${ast.rec.args.size}.")
+                    (rec as MutableList<Any?>)[eval(ast.rec.args[0]) as Int] = eval(ast.value)
+                }
+                else -> TODO("Index with receiver.")
             }
         } else {
             throw Exception("Assignment receiver must be an access expression.")
@@ -313,6 +322,16 @@ class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>()
             is Environment.Object -> rec.scope.lookupVariable(ast.name)?.value
                 ?: throw Exception("Undefined variable ${ast.name}.")
             else -> TODO("Access with receiver.")
+        }
+    }
+
+    private fun eval(ast: RhovasAst.IndexExpr): Any? {
+        return when (val rec = eval(ast.rec)) {
+            is List<*> -> {
+                if (ast.args.size != 1) throw Exception("Undefined function index[]/${ast.args.size}.")
+                rec[eval(ast.args[0]) as Int]
+            }
+            else -> TODO("Index with receiver.")
         }
     }
 
