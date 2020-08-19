@@ -6,7 +6,7 @@ import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst
 
 class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>() {
 
-    private var scope = Environment.Scope(env.scope)
+    var scope = Environment.Scope(env.scope)
     private var type: Environment.Type? = null
 
     override fun eval(ast: RhovasAst): Any? {
@@ -36,6 +36,7 @@ class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>()
             is RhovasAst.BinaryExpr -> eval(ast)
             is RhovasAst.AccessExpr -> eval(ast)
             is RhovasAst.FunctionExpr -> eval(ast)
+            is RhovasAst.LambdaExpr -> eval(ast)
             is RhovasAst.DslExpr -> eval(ast)
             else -> throw AssertionError()
         }
@@ -327,6 +328,11 @@ class RhovasInterpreter(private val env: Environment) : Interpreter<RhovasAst>()
             }
             else -> TODO("Function with receiver.")
         }
+    }
+
+    private fun eval(ast: RhovasAst.LambdaExpr): Any? {
+        //TODO: Closures
+        return ast
     }
 
     private fun eval(ast: RhovasAst.DslExpr): Any? {

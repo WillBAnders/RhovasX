@@ -333,28 +333,15 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
 
     private fun parseSecondaryExpr(): RhovasAst.Expression {
         var expr = parsePrimaryExpr()
-        val size = context.size
-        context.push(tokens[-1]!!.range)
+        repeat(2) { context.push(tokens[-1]!!.range) }
         while (match(".")) {
             val name = parseIdentifier { "A field access or method call requires a name, as in `x.y` or `x.z()`." }
-            context.push(tokens[-1]!!.range)
-            expr = if (match("(")) {
-                val args = mutableListOf<RhovasAst.Expression>()
-                while (!match(")")) {
-                    args.add(parseExpression())
-                    require(peek(")") || match(",")) { error(
-                        "Expected closing parenthesis or comma.",
-                        "A method argument must be followed by a closing parenthesis `)` or comma `,` for additional arguments, as in `obj.method()` or `obj.method(x, y, z)`."
-                    )}
-                }
-                RhovasAst.FunctionExpr(expr, name, args)
-            } else {
-                RhovasAst.AccessExpr(expr, name)
-            }
+            val token = tokens[-1]!!
+            expr = if (peek(listOf("(", "{"))) parseFunctionExpr(expr, name) else RhovasAst.AccessExpr(expr, name)
             context.pop()
-            context.push(tokens[-1]!!.range)
+            context.push(token.range)
         }
-        repeat(context.size - size) { context.pop() }
+        repeat(2) { context.pop() }
         return expr
     }
 
@@ -372,24 +359,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             match(RhovasTokenType.STRING) -> RhovasAst.ScalarLiteralExpr(tokens[-1]!!.literal.removeSurrounding("\""))
             match(RhovasTokenType.IDENTIFIER) -> {
                 val name = tokens[-1]!!.literal
-                context.push(tokens[-1]!!.range)
-                val expr = if (peek("(")) {
-                    val args = mutableListOf<RhovasAst.Expression>()
-                    if (match("(")) {
-                        while (!match(")")) {
-                            args.add(parseExpression())
-                            require(peek(")") || match(",")) { error(
-                                "Expected closing parenthesis or comma.",
-                                "A function argument must be followed by a closing parenthesis `)` or comma `,` for additional arguments, as in `function()` or `function(x, y, z)`."
-                            )}
-                        }
-                    }
-                    RhovasAst.FunctionExpr(null, name, args)
-                } else {
-                    RhovasAst.AccessExpr(null, name)
-                }
-                context.pop()
-                expr
+                if (peek(listOf("(", "{"))) parseFunctionExpr(null, name) else RhovasAst.AccessExpr(null, name)
             }
             match(":", RhovasTokenType.IDENTIFIER) -> RhovasAst.AtomLiteralExpr(tokens[-1]!!.literal)
             match("(") -> {
@@ -435,6 +405,40 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                 "The parser expected to parse an expression, but received an unexpected token instead."
             ))
         }
+    }
+
+    private fun parseFunctionExpr(rec: RhovasAst.Expression?, name: String): RhovasAst.FunctionExpr {
+        require(peek(listOf("(", "{")))
+        context.push(tokens[-1]!!.range)
+        val args = mutableListOf<RhovasAst.Expression>()
+        if (match("(")) {
+            while (!match(")")) {
+                args.add(parseExpression())
+                require(peek(")") || match(",")) { error(
+                    "Expected closing parenthesis or comma.",
+                    "A function argument must be followed by a closing parenthesis `)` or comma `,` for additional arguments, as in `function()` or `function(x, y, z)`."
+                )}
+            }
+        }
+        if (match("{")) {
+            val params = mutableListOf<String>()
+            if (peek(RhovasTokenType.IDENTIFIER)) {
+                do {
+                    require(match(RhovasTokenType.IDENTIFIER))
+                    params.add(tokens[-1]!!.literal)
+                    require(peek("-", ">") || match(",")) { error(
+                        "Expected lambda arrow or comma",
+                        "Lambda parameters must be followed by an arrow `->` or comma `,` for additional parameters, as in `lambda { x, y -> ... }`."
+                    )}
+                } while (!match("-", ">"))
+            }
+            val stmts = generateSequence {
+                if (!match("}")) parseStatement() else null
+            }.toList()
+            args.add(RhovasAst.LambdaExpr(params, RhovasAst.BlockStmt(stmts)))
+        }
+        context.pop()
+        return RhovasAst.FunctionExpr(rec, name, args)
     }
 
     private fun parseDsl(): RhovasAst.DslExpr {
