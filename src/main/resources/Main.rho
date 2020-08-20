@@ -3,6 +3,7 @@ val factorial = factorial(7);
 func main() {
     print("Hello, World!");
     print("Factorial: " + factorial);
+    print("Squares: " + range(1, 10, :incl).map { i -> return i * i; });
 }
 
 func factorial(num) {

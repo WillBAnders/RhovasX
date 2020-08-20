@@ -1,6 +1,5 @@
 package dev.willbanders.rhovas.x.interpreter
 
-import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst
 import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst.*
 
 class Interpreter(private val env: Environment) : Visitor<Any?>() {
@@ -12,7 +11,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         ast.impts.forEach { visit(it) }
         ast.mbrs.forEach { visit(it) }
         ast.mbrs.filterIsInstance<Mbr.Property>().forEach { prop ->
-            scope.lookupVariable(prop.name)!!.value = prop.value?.let { visit(it) }
+            scope.getVar(prop.name)!!.value = prop.value?.let { visit(it) } as Environment.Object
         }
         val main = ast.mbrs.find {it is Mbr.Function && it.name == "main" }
         if (main != null) {
@@ -38,21 +37,22 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     }
 
     override fun visit(ast: Mbr.Property) {
+        val value = env.reqType("Null").init(null)
         if (type != null) {
-            type!!.instance.defineVariable(ast.name, null)
+            type!!.instance.defVar(ast.name, value)
         } else {
-            scope.defineVariable(ast.name, null)
+            scope.defVar(ast.name, value)
         }
     }
 
     override fun visit(ast: Mbr.Constructor) {
         val closure = type!!
-        scope.defineFunction(closure.name, ast.params.size) { args ->
-            val instance = Environment.Object(closure, Environment.Scope(closure.instance))
-            instance.scope.defineVariable("this", instance)
-            closure.instance.variables.forEach { instance.scope.defineVariable(it.key, it.value.value) }
+        scope.defFunc(closure.name, ast.params.size) { args ->
+            val instance = closure.init(null)
+            instance.scope.defVar("this", instance)
+            instance.scope.variables.putAll(closure.instance.variables)
             scoped(Environment.Scope(instance.scope)) {
-                args.indices.forEach { scope.defineVariable(ast.params[it], args[it]) }
+                args.indices.forEach { scope.defVar(ast.params[it], args[it]) }
                 try {
                     visit(ast.body)
                 } catch (ignored: Return) {}
@@ -63,12 +63,13 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
 
     override fun visit(ast: Mbr.Function) {
         if (type != null) {
-            type!!.instance.defineFunction(ast.name, ast.params.size) { args ->
-                val instance = args[0] as Environment.Object
+            type!!.instance.defFunc(ast.name, ast.params.size) { args ->
+                val instance = args[0]
                 scoped(Environment.Scope(instance.scope)) {
-                    ast.params.indices.forEach { scope.defineVariable(ast.params[it], args[it + 1]) }
+                    ast.params.indices.forEach { scope.defVar(ast.params[it], args[it + 1]) }
                     try {
                         visit(ast.body)
+                        env.reqType("Null").init(null)
                     } catch (e: Return) {
                         e.value
                     }
@@ -76,11 +77,12 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             }
         } else {
             val closure = scope
-            closure.defineFunction(ast.name, ast.params.size) { args ->
+            closure.defFunc(ast.name, ast.params.size) { args ->
                 scoped(Environment.Scope(closure)) {
-                    ast.params.indices.forEach { scope.defineVariable(ast.params[it], args[it]) }
+                    ast.params.indices.forEach { scope.defVar(ast.params[it], args[it]) }
                     try {
                         visit(ast.body)
+                        env.reqType("Null").init(null)
                     } catch (e: Return) {
                         e.value
                     }
@@ -100,41 +102,37 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     }
 
     override fun visit(ast: Stmt.Declaration) {
-        scope.defineVariable(ast.name, ast.value?.let { visit(it) })
+        scope.defVar(ast.name, ast.value
+            ?.let { visit(it) as Environment.Object }
+            ?: env.reqType("Null").init(null))
     }
 
     override fun visit(ast: Stmt.Assignment) {
         if (ast.rec is Expr.Access) {
             if (ast.rec.rec == null) {
-                val variable = scope.lookupVariable(ast.rec.name) ?: throw Exception("Undefined variable ${ast.rec.name}.")
-                variable.value = visit(ast.value)
+                val variable = scope.reqVar(ast.rec.name)
+                variable.value = visit(ast.value) as Environment.Object
             } else {
-                val rec = visit(ast.rec.rec)
-                if (rec is Environment.Object) {
-                    val variable = rec.scope.lookupVariable(ast.rec.name) ?: throw Exception("Undefined variable ${ast.rec.name} on receiver of type ${rec.type.name}.")
-                    variable.value = visit(ast.value)
-                } else {
-                    TODO("Assignment on builtin object?")
-                }
+                val rec = visit(ast.rec.rec) as Environment.Object
+                val field = rec.reqProp(ast.rec.name)
+                field.value = visit(ast.value) as Environment.Object
             }
         } else if (ast.rec is Expr.Index) {
-            when (val rec = visit(ast.rec.rec)) {
-                is List<*> -> {
-                    if (ast.rec.args.size != 1) throw Exception("Undefined function index[]=/${ast.rec.args.size}.")
-                    (rec as MutableList<Any?>)[visit(ast.rec.args[0]) as Int] = visit(ast.value)
-                }
-                else -> TODO("Index with receiver.")
-            }
+            val rec = visit(ast.rec.rec) as Environment.Object
+            val args = ast.rec.args + listOf(ast.value)
+            val method = rec.reqMthd("[]=", args.size)
+            method.invoke(args.map { visit(it) as Environment.Object })
         } else {
-            throw Exception("Assignment receiver must be an access expression.")
+            throw Exception("Assignment receiver must be an access expression or index expression.")
         }
     }
 
     override fun visit(ast: Stmt.If) {
-        when (val cond = visit(ast.cond)) {
+        val cond = visit(ast.cond) as Environment.Object
+        when (cond.value) {
             true -> visit(ast.ifStmt)
             false -> ast.elseStmt?.let { visit(it) }
-            else -> throw Exception("If condition must evaluate to a Boolean, received $cond.")
+            else -> throw Exception("If condition must evaluate to a Boolean, received ${cond.type}.")
         }
     }
 
@@ -142,10 +140,12 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         val args = ast.args.map { visit(it) }
         val case = when (args.size) {
             0 -> ast.cases.firstOrNull { c ->
-                c.first.any { it is Expr.Access && it.rec == null && it.name == "else" || visit(it) == true }
+                c.first.any { it is Expr.Access && it.rec == null && it.name == "else" || (visit(it) as Environment.Object).value == true }
             } ?: return
             1 -> ast.cases.firstOrNull { c ->
-                c.first.any { it is Expr.Access && it.rec == null && it.name == "else" || visit(it) == args[0] }
+                val arg = visit(ast.args[0]) as Environment.Object
+                val method = arg.reqMthd("==", 1)
+                c.first.any { it is Expr.Access && it.rec == null && it.name == "else" || method.invoke(listOf(visit(it) as Environment.Object)).value == true }
             } ?: throw Exception("Structural match must cover all cases or have an `else` case (missed ${args[0]})")
             else -> TODO("Semantics for match with multiple arguments.")
         }
@@ -153,162 +153,118 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     }
 
     override fun visit(ast: Stmt.For) {
-        when (val expr = visit(ast.expr)) {
-            is Iterable<*> -> scoped(Environment.Scope(scope)) { expr.forEach {
-                scope.defineVariable(ast.name, it)
-                visit(ast.body)
-            } }
-            else -> throw Exception("For loop expression must evalute to an Iterable, received $expr.")
-        }
+        (visit(ast.expr) as Environment.Object)
+            .reqMthd("iterate", 1)
+            .invoke(listOf(visit(Expr.Lambda(listOf(ast.name), ast.body))))
     }
 
     override fun visit(ast: Stmt.While) {
         while (true) {
-            when (val cond = visit(ast.cond)) {
+            val cond = visit(ast.cond) as Environment.Object
+            when (cond.value) {
                 true -> visit(ast.body)
                 false -> break
-                else -> throw Exception("If condition must evaluate to a Boolean, received $cond.")
+                else -> throw Exception("While condition must evaluate to a Boolean, received ${cond.type}.")
             }
         }
     }
 
     override fun visit(ast: Stmt.Return) {
-        throw Return(visit(ast.value))
+        throw Return(visit(ast.value) as Environment.Object)
     }
 
-    override fun visit(ast: Expr.Literal): Any? {
-        return when (ast.literal) {
-            is List<*> -> (ast.literal as List<Expr>).map { visit(it) }
-            is Map<*, *> -> (ast.literal as Map<String, Expr>).mapValues { visit(it.value) }
-            else -> ast.literal
+    override fun visit(ast: Expr.Literal): Environment.Object {
+        return when(ast.literal) {
+            null -> env.reqType("Null").init(null)
+            is Boolean -> env.reqType("Boolean").init(ast.literal)
+            is Int -> env.reqType("Integer").init(ast.literal)
+            is Double -> env.reqType("Decimal").init(ast.literal)
+            is Char -> env.reqType("Character").init(ast.literal)
+            is String -> env.reqType("String").init(ast.literal)
+            is Expr.Literal.Atom -> env.reqType("Atom").init(ast.literal.name)
+            is List<*> -> env.reqType("List").init((ast.literal as List<Expr>).map { visit(it) })
+            is Map<*, *> -> env.reqType("Map").init((ast.literal as Map<String, Expr>).mapValues { visit(it.value) })
+            else -> throw AssertionError()
         }
     }
 
-    override fun visit(ast: Expr.Group): Any? {
-        return visit(ast.expr)
+    override fun visit(ast: Expr.Group): Environment.Object {
+        return visit(ast.expr) as Environment.Object
     }
 
-    override fun visit(ast: Expr.Unary): Any? {
-        val value = visit(ast.expr)
-        return when(ast.op) {
-            "+" -> when(value) {
-                is Int -> value.unaryPlus()
-                is Double -> value.unaryPlus()
-                else -> null
-            }
-            "-" -> when(value) {
-                is Int -> value.unaryMinus()
-                is Double -> value.unaryMinus()
-                else -> null
-            }
-            "!" -> when(value) {
-                is Boolean -> value.not()
-                else -> null
-            }
-            else -> null
-        } ?: throw Exception("Operator " + ast.op + " cannot be applied to " + value?.javaClass?.name + ".")
+    override fun visit(ast: Expr.Unary): Environment.Object {
+        val value = visit(ast.expr) as Environment.Object
+        return value.reqMthd(ast.op, 0).invoke(listOf())
     }
 
     override fun visit(ast: Expr.Binary): Any? {
-        val left = visit(ast.left)
-        val right = { visit(ast.right) }
-        return when(ast.op) {
-            "||" -> when(left) {
-                true -> true
-                false -> right() as? Boolean
-                else -> null
+        val left = (visit(ast.left)) as Environment.Object
+        val right = { (visit(ast.right) as Environment.Object) }
+        return when (ast.op) {
+            "&&", "||" -> {
+                val l = left.value as Boolean
+                val r = { right().value as Boolean }
+                env.reqType("Boolean").init(if (ast.op == "&&") l && r() else l || r())
             }
-            "&&" -> when(left) {
-                true -> right() as? Boolean
-                false -> false
-                else -> null
+            "<", "<=", ">", ">=" -> {
+                val compare = left.reqMthd("compare", 1).invoke(listOf(right()))
+                env.reqType("Boolean").init(when (ast.op) {
+                    "<" -> compare.value == "lt"
+                    "<=" -> compare.value == "lt" || compare.value == "eq"
+                    ">" -> compare.value == "gt"
+                    ">=" -> compare.value == "gt" || compare.value == "eq"
+                    else -> throw AssertionError()
+                })
             }
-            "<" -> when(left) {
-                is Int -> (right() as? Int)?.let { left < it }
-                is Double -> (right() as? Double)?.let { left < it }
-                else -> null
+            "==", "!=" -> {
+                val eq = left.reqMthd("==", 1).invoke(listOf(right())).value as Boolean
+                env.reqType("Boolean").init(if (ast.op == "==") eq else !eq)
             }
-            "<=" -> when(left) {
-                is Int -> (right() as? Int)?.let { left <= it }
-                is Double -> (right() as? Double)?.let { left <= it }
-                else -> null
+            "===", "!==" -> {
+                val r = right()
+                val eq = left === r || left.type.name == r.type.name && left.value === r.value
+                env.reqType("Boolean").init(if (ast.op == "===") eq else !eq)
             }
-            ">" -> when(left) {
-                is Int -> (right() as? Int)?.let { left > it }
-                is Double -> (right() as? Double)?.let { left > it }
-                else -> null
-            }
-            ">=" -> when(left) {
-                is Int -> (right() as? Int)?.let { left >= it }
-                is Double -> (right() as? Double)?.let { left >= it }
-                else -> null
-            }
-            "==" -> left == right()
-            "!=" -> left != right()
-            "===" -> left === right()
-            "!==" -> left !== right()
-            "+" -> when(left) {
-                is Int -> (right() as? Int)?.let { left + it }
-                is Double -> (right() as? Double)?.let { left + it }
-                is String -> left + right()
-                else -> null
-            }
-            "-" -> when(left) {
-                is Int -> (right() as? Int)?.let { left - it }
-                is Double -> (right() as? Double)?.let { left - it }
-                else -> null
-            }
-            "*" -> when(left) {
-                is Int -> (right() as? Int)?.let { left * it }
-                is Double -> (right() as? Double)?.let { left * it }
-                else -> null
-            }
-            "/" -> when(left) {
-                is Int -> (right() as? Int)?.let { left / it }
-                is Double -> (right() as? Double)?.let { left / it }
-                else -> null
-            }
-            else -> null
-        } ?: throw Exception("Operator " + ast.op + " cannot be applied to " + left?.javaClass?.name + " and " + right()?.javaClass?.name + ".")
-    }
-
-    override fun visit(ast: Expr.Access): Any? {
-        return when (val rec = ast.rec?.let { visit(it) }) {
-            null -> scope.lookupVariable(ast.name)?.value
-                ?: throw Exception("Undefined variable ${ast.name}.")
-            is Environment.Object -> rec.scope.lookupVariable(ast.name)?.value
-                ?: throw Exception("Undefined variable ${ast.name}.")
-            else -> TODO("Access with receiver.")
+            else -> left.reqMthd(ast.op, 1).invoke(listOf(right()))
         }
     }
 
-    override fun visit(ast: Expr.Index): Any? {
-        return when (val rec = visit(ast.rec)) {
-            is List<*> -> {
-                if (ast.args.size != 1) throw Exception("Undefined function index[]/${ast.args.size}.")
-                rec[visit(ast.args[0]) as Int]
-            }
-            else -> TODO("Index with receiver.")
+    override fun visit(ast: Expr.Access): Environment.Object {
+        return if (ast.rec == null) {
+            scope.reqVar(ast.name).value
+        } else {
+            (visit(ast.rec) as Environment.Object).reqProp(ast.name).value
         }
     }
 
-    override fun visit(ast: Expr.Function): Any? {
-        return when (val rec = ast.rec?.let { visit(it) }) {
-            null -> scope.lookupFunction(ast.name, ast.args.size)?.invoke?.invoke(ast.args.map { visit(it) })
-                ?: throw Exception("Undefined function ${ast.name}/${ast.args.size}.")
-            is Environment.Object -> {
-                val func = rec.scope.lookupFunction(ast.name, ast.args.size)
-                    ?: throw Exception("Undefined function ${ast.name}/${ast.args.size}.")
-                val args = listOf(rec) + ast.args.map { visit(it) }
-                scoped(rec.scope) { func.invoke(args) }
-            }
-            else -> TODO("Function with receiver.")
-        }
+    override fun visit(ast: Expr.Index): Environment.Object {
+        return (visit(ast.rec) as Environment.Object)
+            .reqMthd("[]", ast.args.size)
+            .invoke(ast.args.map { visit(it) as Environment.Object })
     }
 
-    override fun visit(ast: Expr.Lambda): Any? {
-        //TODO: Closures
-        return ast
+    override fun visit(ast: Expr.Function): Environment.Object {
+        val function = if (ast.rec == null) {
+            scope.reqFunc(ast.name, ast.args.size)
+        } else {
+            (visit(ast.rec) as Environment.Object).reqMthd(ast.name, ast.args.size)
+        }
+        return function.invoke(ast.args.map { visit(it) as Environment.Object })
+    }
+
+    override fun visit(ast: Expr.Lambda): Environment.Object {
+        val closure = scope
+        return env.reqType("Lambda").init(Environment.Function("invoke", 1) { args ->
+            scoped(Environment.Scope(closure)) {
+                ast.params.withIndex().forEach { scope.defVar(it.value, args[it.index]) }
+                try {
+                    visit(ast.body)
+                    env.reqType("Null").init(null)
+                } catch (e: Return) {
+                    e.value
+                }
+            }
+        })
     }
 
     override fun visit(ast: Expr.Dsl): Any? {
@@ -323,6 +279,6 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         return result
     }
 
-    data class Return(val value: Any?) : Exception()
+    data class Return(val value: Environment.Object) : Exception()
 
 }

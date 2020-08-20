@@ -7,14 +7,14 @@ import dev.willbanders.rhovas.x.parser.ParseException
 import dev.willbanders.rhovas.x.parser.rhovas.RhovasParser
 import java.io.File
 
+val ENV = Environment()
 const val PATH = "src/main/resources/Main.rho"
 
 fun main() {
-    val env = Environment()
-    env.scope.defineFunction("print", 1) { println(it[0]) }
+    init(ENV)
     val input = File(PATH).readText()
     try {
-        Interpreter(env).visit(RhovasParser(input).parse())
+        Interpreter(ENV).visit(RhovasParser(input).parse())
     } catch (e: ParseException) {
         println(Diagnostic(PATH.substringAfterLast('/'), input, e.error))
     }
