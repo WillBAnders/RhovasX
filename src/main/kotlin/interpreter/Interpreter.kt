@@ -23,6 +23,14 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         TODO()
     }
 
+    override fun visit(ast: Type): Any? {
+        TODO()
+    }
+
+    override fun visit(ast: Parameter): Any? {
+        TODO()
+    }
+
     override fun visit(ast: Mbr.Cmpt.Class) {
         env.defType(ast.name, scope) { t ->
             val current = type
@@ -52,7 +60,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             instance.scope.defVar("this", instance)
             instance.scope.variables.putAll(closure.instance.variables)
             scoped(Environment.Scope(instance.scope)) {
-                args.indices.forEach { scope.defVar(ast.params[it], args[it]) }
+                args.indices.forEach { scope.defVar(ast.params[it].name, args[it]) }
                 try {
                     visit(ast.body)
                 } catch (ignored: Return) {}
@@ -66,7 +74,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             type!!.instance.defFunc(ast.name, ast.params.size) { args ->
                 val instance = args[0]
                 scoped(Environment.Scope(instance.scope)) {
-                    ast.params.indices.forEach { scope.defVar(ast.params[it], args[it + 1]) }
+                    ast.params.indices.forEach { scope.defVar(ast.params[it].name, args[it + 1]) }
                     try {
                         visit(ast.body)
                         env.reqType("Null").init(null)
@@ -79,7 +87,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             val closure = scope
             closure.defFunc(ast.name, ast.params.size) { args ->
                 scoped(Environment.Scope(closure)) {
-                    ast.params.indices.forEach { scope.defVar(ast.params[it], args[it]) }
+                    ast.params.indices.forEach { scope.defVar(ast.params[it].name, args[it]) }
                     try {
                         visit(ast.body)
                         env.reqType("Null").init(null)

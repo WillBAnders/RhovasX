@@ -6,7 +6,7 @@ func main() {
     print("Squares: " + range(1, 10, :incl).map { i -> return i * i; });
 }
 
-func factorial(num) {
+func factorial(num: Integer) {
     match (num) {
         0, 1: return 1;
         else: return num * factorial(num - 1);

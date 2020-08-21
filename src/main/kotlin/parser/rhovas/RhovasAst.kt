@@ -14,17 +14,29 @@ sealed class RhovasAst {
         val name: String?,
     ) : RhovasAst()
 
+    data class Type(
+        val name: String,
+        val generics: List<Type>,
+    ) : RhovasAst()
+
+    data class Parameter(
+        val name: String,
+        val type: Type,
+    ) : RhovasAst()
+
     sealed class Mbr : RhovasAst() {
 
         sealed class Cmpt : Mbr() {
 
             data class Class(
                 val name: String,
+                val generics: List<Type>,
                 val mbrs: List<Mbr>,
             ) : Cmpt()
 
             data class Interface(
                 val name: String,
+                val generics: List<Type>,
                 val mbrs: List<Mbr>,
             ) : Cmpt()
 
@@ -33,17 +45,18 @@ sealed class RhovasAst {
         data class Property(
             val mut: Boolean,
             val name: String,
+            val type: Type?,
             val value: Expr?,
         ) : Mbr()
 
         data class Constructor(
-            val params: List<String>,
+            val params: List<Parameter>,
             val body: Stmt,
         ) : Mbr()
 
         data class Function(
             val name: String,
-            val params: List<String>,
+            val params: List<Parameter>,
             val body: Stmt,
         ) : Mbr()
 
@@ -62,6 +75,7 @@ sealed class RhovasAst {
         data class Declaration(
             val mut: Boolean,
             val name: String,
+            val type: Type?,
             val value: Expr?,
         ) : Stmt()
 
@@ -157,6 +171,8 @@ sealed class RhovasAst {
             return when (ast) {
                 is Source -> visit(ast)
                 is Import -> visit(ast)
+                is Type -> visit(ast)
+                is Parameter -> visit(ast)
                 is Mbr.Cmpt.Class -> visit(ast)
                 is Mbr.Cmpt.Interface -> visit(ast)
                 is Mbr.Property -> visit(ast)
@@ -186,6 +202,10 @@ sealed class RhovasAst {
         protected abstract fun visit(ast: Source): T
 
         protected abstract fun visit(ast: Import): T
+
+        protected abstract fun visit(ast: Type): T
+
+        protected abstract fun visit(ast: Parameter): T
 
         protected abstract fun visit(ast: Mbr.Cmpt.Class): T
 
