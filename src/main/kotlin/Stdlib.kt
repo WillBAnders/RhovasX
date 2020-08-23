@@ -10,7 +10,7 @@ fun init(env: Environment) {
     }
     env.defType("Boolean") { t ->
         t.instance.defFunc("!", 0) {
-            t.init(it[0].value as Boolean)
+            t.init(!(it[0].value as Boolean))
         }
         t.instance.defFunc("toString", 0) {
             env.reqType("String").init(it[0].value.toString())
@@ -139,19 +139,19 @@ fun init(env: Environment) {
             })
         }
         t.instance.defFunc("[]", 1) {
-            (it[0].value as List<Environment.Object>)[it[1] as Int]
+            (it[0].value as List<Environment.Object>)[it[1].value as Int]
         }
         t.instance.defFunc("[]=", 2) {
             (it[0].value as MutableList<Environment.Object>)[it[1].value as Int] = it[2]
             env.reqType("Null").init(null)
         }
         t.instance.defFunc("==", 1) {
-            env.reqType("Boolean").init(it[1].type == t && it[0].value as String == it[1].value)
+            env.reqType("Boolean").init(it[1].type == t && it[0].value as List<Environment.Object> == it[1].value)
         }
         t.instance.defFunc("toString", 0) {
             env.reqType("String").init((it[0].value as List<Environment.Object>).map {
                 it.reqMthd("toString", 0).invoke(listOf()).value as String
-            })
+            }.toString())
         }
     }
     env.defType("Map") { t ->

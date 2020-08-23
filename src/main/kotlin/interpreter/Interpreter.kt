@@ -36,6 +36,9 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             val current = type
             type = t
             ast.mbrs.forEach { visit(it) }
+            ast.mbrs.filterIsInstance<Mbr.Property>().forEach { prop ->
+                t.instance.variables[prop.name]!!.value = prop.value?.let { visit(it) } as Environment.Object
+            }
             type = current
         }
     }
