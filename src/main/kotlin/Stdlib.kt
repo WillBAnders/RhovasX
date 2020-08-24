@@ -8,7 +8,7 @@ fun init(env: Environment) {
             env.reqType("String").init(it[0].value.toString())
         }
         t.instance.defFunc("==", 1) {
-            env.reqType("Null").init(it[0].value == it[1].value)
+            env.reqType("Boolean").init(it[0].value == it[1].value)
         }
     }
     env.defType("Boolean") { t ->
@@ -19,9 +19,6 @@ fun init(env: Environment) {
             env.reqType("String").init(it[0].value.toString())
         }
         t.instance.defFunc("==", 1) {
-            env.reqType("Boolean").init(it[0].value as Boolean == it[1].value as Boolean)
-        }
-        t.instance.defFunc("compare", 1){
             env.reqType("Boolean").init(it[0].value as Boolean == it[1].value as Boolean)
         }
     }
