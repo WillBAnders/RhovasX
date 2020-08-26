@@ -2,62 +2,66 @@ package dev.willbanders.rhovas.x.interpreter
 
 class Environment {
 
-    val scope = Scope(null)
-    val types = mutableMapOf<String, Type>()
-
-    fun getType(name: String): Type? {
-        return types[name]
-    }
+    val types: MutableMap<String, Type> = mutableMapOf()
 
     fun reqType(name: String): Type {
         return types[name] ?: throw Exception("Undefined type $name.")
     }
 
-    fun defType(name: String, scope: Scope = Scope(null), builder: (Type) -> Unit) {
-        val static = Scope(scope)
-        val instance = Scope(static)
-        types[name] = Type(name, static, instance).also(builder)
+    fun defType(name: String, builder: (Type) -> Unit) {
+        types[name] = Type(name).also(builder)
     }
 
-    class Scope(private val parent: Scope?) {
+    fun init(name: String, value: Any?): Object {
+        return Object(reqType(name), value)
+    }
 
-        val variables = mutableMapOf<String, Variable>()
-        val functions = mutableMapOf<Pair<String, Int>, Function>()
+    class Type(val name: String) {
 
-        fun getVar(name: String): Variable? {
-            return variables[name] ?: parent?.getVar(name)
-        }
-
-        fun getFunc(name: String, arity: Int): Function? {
-            return functions[Pair(name, arity)] ?: parent?.getFunc(name, arity)
-        }
+        val vars: MutableMap<String, Variable> = mutableMapOf()
+        val flds: MutableMap<String, Variable> = mutableMapOf()
+        val props: MutableMap<String, Property> = mutableMapOf()
+        val funcs: MutableMap<Pair<String, Int>, Function> = mutableMapOf()
+        val mthds: MutableMap<Pair<String, Int>, Function> = mutableMapOf()
 
         fun reqVar(name: String): Variable {
-            return getVar(name) ?: throw Exception("Undefined variable $name.")
+            return vars[name] ?: throw Exception("Undefined variable ${this.name}.$name.")
+        }
+
+        fun reqFld(name: String): Variable {
+            return flds[name] ?: throw Exception("Undefined field ${this.name}.$name.")
+        }
+
+        fun reqProp(name: String): Property {
+            return props[name] ?: throw Exception("Undefined property ${this.name}.$name.")
         }
 
         fun reqFunc(name: String, arity: Int): Function {
-            return getFunc(name, arity) ?: throw Exception("Undefined function $name/$arity.")
+            return funcs[Pair(name, arity)] ?: throw Exception("Undefined function ${this.name}.$name/$arity.")
         }
 
-        fun defVar(name: String, value: Object) {
-            variables[name] = Variable(name, value)
+        fun reqMthd(name: String, arity: Int): Function {
+            return mthds[Pair(name, arity)] ?: throw Exception("Undefined method ${this.name}.$name/$arity.")
+        }
+
+        fun defVar(name: String, value: Any?) {
+            vars[name] = Variable(name, Object(this, value))
+        }
+
+        fun defFld(name: String, value: Any?) {
+            flds[name] = Variable(name, Object(this, value))
+        }
+
+        fun defProp(name: String, get: (List<Object>) -> Object, set: (List<Object>) -> Unit) {
+            props[name] ?: Property(name, get, set)
         }
 
         fun defFunc(name: String, arity: Int, invoke: (List<Object>) -> Object) {
-            functions[Pair(name, arity)] = Function(name, arity, invoke)
+            funcs[Pair(name, arity)] = Function(name, arity, invoke)
         }
 
-    }
-
-    data class Type(
-        val name: String,
-        val static: Scope,
-        val instance: Scope,
-    ) {
-
-        fun init(value: Any?): Object {
-            return Object(this, Scope(instance), value)
+        fun defMthd(name: String, arity: Int, invoke: (List<Object>) -> Object) {
+            mthds[Pair(name, arity)] = Function(name, arity, invoke)
         }
 
     }
@@ -65,6 +69,12 @@ class Environment {
     data class Variable(
         val name: String,
         var value: Object,
+    )
+
+    data class Property(
+        val name: String,
+        val get: (List<Object>) -> Object,
+        val set: (List<Object>) -> Unit,
     )
 
     data class Function(
@@ -75,28 +85,15 @@ class Environment {
 
     data class Object(
         val type: Type,
-        val scope: Scope,
         val value: Any?,
     ) {
 
-        fun getProp(name: String): Variable? {
-            return scope.variables[name] ?: type.instance.getFunc(name, 0)?.let {
-                Variable(name, it.invoke(listOf()))
-            }
-        }
-
-        fun reqProp(name: String): Variable {
-            return getProp(name) ?: throw Exception("Undefined property $name on object of type ${type.name}.")
-        }
-
-        fun getMthd(name: String, arity: Int): Function? {
-            return type.instance.getFunc(name, arity)?.let { f ->
-                Function(f.name, f.arity) { f.invoke(listOf(this) + it) }
-            }
+        fun reqProp(name: String): Property {
+            return type.reqProp(name)
         }
 
         fun reqMthd(name: String, arity: Int): Function {
-            return getMthd(name, arity) ?: throw Exception("Undefined method $name/$arity on object of type ${type.name}.")
+            return type.reqMthd(name, arity)
         }
 
     }
