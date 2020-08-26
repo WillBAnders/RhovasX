@@ -1,0 +1,7 @@
+interface Comparable: Equatable {
+
+    func op== equals(other: This): Boolean {}
+
+    func op<=> compare(other: This): Atom {}
+
+}

@@ -1,5 +1,5 @@
 interface Equatable {
 
-    abstract func equals(other: This);
+    func op== equals(other: This): Boolean {}
 
 }

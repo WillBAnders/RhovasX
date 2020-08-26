@@ -1,9 +1,19 @@
-class Boolean: Equatable {
+class Integer: Comparable {
 
-    func op! negate(): Boolean;
+    func op+ add(other: Integer): Integer {}
 
-    func equals(other: Boolean): Boolean;
+    func op- sub(other: Integer): Integer {}
 
-    func toString(): String;
+    func op* mul(other: Integer): Integer {}
+
+    func op/ div(other: Integer): Integer {}
+
+    func mod(other: Integer): Integer {}
+
+    func rem(other: Integer): Integer {}
+
+    func op<=> compare(other: Integer): Atom {}
+
+    func toString(): String {}
 
 }
