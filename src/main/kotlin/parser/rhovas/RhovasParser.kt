@@ -7,7 +7,7 @@ import dev.willbanders.rhovas.x.parser.embed.EmbedParser
 
 class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) {
 
-    override fun parse(): RhovasAst {
+    override fun parse(): RhovasAst.Source {
         return parseSource()
     }
 
@@ -156,6 +156,11 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
     private fun parseFunctionMbr(): RhovasAst.Mbr.Function {
         require(match("func"))
         context.push(tokens[-1]!!.range)
+        val op = if (match("op")) {
+            generateSequence {
+                if (match(RhovasTokenType.OPERATOR)) tokens[-1]!!.literal else null
+            }.joinToString("")
+        } else null
         val name = parseIdentifier { "A function declaration requires a name after `func`, as in `func name() { ... }`." }
         require(match("(")) { error(
             "Expected opening parenthesis.",
@@ -169,9 +174,10 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                 "A function parameter must be followed by a closing parenthesis `)` or comma `,` for additional parameters, as in `func name() { ... }` and `func name(x, y, z) { ... }`."
             )}
         }
+        val ret = if (match(":")) parseType() else null
         val body = parseStatement()
         context.pop()
-        return RhovasAst.Mbr.Function(name, params, body)
+        return RhovasAst.Mbr.Function(op, name, params, ret, body)
     }
 
     private fun parseStatement(): RhovasAst.Stmt {

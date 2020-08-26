@@ -53,7 +53,7 @@ class Environment {
         }
 
         fun defProp(name: String, get: (List<Object>) -> Object, set: (List<Object>) -> Unit) {
-            props[name] ?: Property(name, get, set)
+            props[name] = Property(name, get, set)
         }
 
         fun defFunc(name: String, arity: Int, invoke: (List<Object>) -> Object) {

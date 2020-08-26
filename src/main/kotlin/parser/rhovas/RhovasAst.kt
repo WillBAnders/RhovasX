@@ -55,8 +55,10 @@ sealed class RhovasAst {
         ) : Mbr()
 
         data class Function(
+            val op: String?,
             val name: String,
             val params: List<Parameter>,
+            val ret: Type?,
             val body: Stmt,
         ) : Mbr()
 

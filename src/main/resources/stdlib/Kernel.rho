@@ -1,0 +1,5 @@
+func print(obj: Object) {}
+
+func range(lower: Integer, upper: Integer) {}
+
+func range(lower: Integer, upper: Integer, incl: Boolean) {}
