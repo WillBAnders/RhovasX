@@ -1,0 +1,5 @@
+interface Equatable {
+
+    abstract func equals(other: This);
+
+}

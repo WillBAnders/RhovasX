@@ -1,0 +1,9 @@
+class Boolean: Equatable {
+
+    func op! negate(): Boolean;
+
+    func equals(other: Boolean): Boolean;
+
+    func toString(): String;
+
+}

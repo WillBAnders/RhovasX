@@ -1,0 +1,15 @@
+class String: Equatable {
+
+    func op+ add(other: Int): Int;
+    func op- sub(other: Int): Int;
+    func op* mul(other: Int): Int;
+    func op/ div(other: Int): Int;
+
+    func equals(other: Int): Boolean;
+
+    func rem(other: Int): Int;
+    func mod(other: Int): Int;
+
+    func toString(): String;
+
+}
