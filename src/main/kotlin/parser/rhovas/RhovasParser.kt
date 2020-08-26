@@ -85,6 +85,13 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                 )}
             } while (!match(">"))
         }
+        val extends = if (match(":")) {
+            val types = mutableListOf<RhovasAst.Type>()
+            do {
+                types.add(parseType())
+            } while (match(","))
+            types
+        } else listOf()
         require(match("{")) { error(
             "Expected opening brace.",
             "The body of a class must be surrounded by braces `{}`, as in `class Name { ... }`."
@@ -93,7 +100,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             if (!match("}")) parseMember() else null
         }.toList()
         context.pop()
-        return RhovasAst.Mbr.Cmpt.Class(name, generics, mbrs)
+        return RhovasAst.Mbr.Cmpt.Class(name, generics, extends, mbrs)
     }
 
     private fun parseInterfaceCmpt(): RhovasAst.Mbr.Cmpt.Interface {
@@ -110,6 +117,13 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                 )}
             } while (!match(">"))
         }
+        val extends = if (match(":")) {
+            val types = mutableListOf<RhovasAst.Type>()
+            do {
+                types.add(parseType())
+            } while (match(","))
+            types
+        } else listOf()
         require(match("{")) { error(
             "Expected opening brace.",
             "The body of an interface must be surrounded by braces `{}`, as in `interface Name { ... }`."
@@ -118,7 +132,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             if (!match("}")) parseMember() else null
         }.toList()
         context.pop()
-        return RhovasAst.Mbr.Cmpt.Interface(name, generics, mbrs)
+        return RhovasAst.Mbr.Cmpt.Interface(name, generics, extends, mbrs)
     }
 
     private fun parsePropertyMbr(): RhovasAst.Mbr.Property {

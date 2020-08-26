@@ -31,12 +31,14 @@ sealed class RhovasAst {
             data class Class(
                 val name: String,
                 val generics: List<Type>,
+                val extends: List<Type>,
                 val mbrs: List<Mbr>,
             ) : Cmpt()
 
             data class Interface(
                 val name: String,
                 val generics: List<Type>,
+                val extends: List<Type>,
                 val mbrs: List<Mbr>,
             ) : Cmpt()
 

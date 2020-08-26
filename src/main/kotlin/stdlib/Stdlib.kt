@@ -5,6 +5,7 @@ import dev.willbanders.rhovas.x.parser.Diagnostic
 import dev.willbanders.rhovas.x.parser.ParseException
 import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst
 import dev.willbanders.rhovas.x.parser.rhovas.RhovasParser
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
 
@@ -13,23 +14,33 @@ object Stdlib {
     fun init(env: Environment) {
         val root = Paths.get("src/main/resources/stdlib")
         Files.walk(root).filter { Files.isRegularFile(it) }.forEach {
-            val input = it.toFile().readText()
-            val ast = try {
-                RhovasParser(it.toFile().readText()).parse()
-            } catch(e: ParseException) {
-                println(Diagnostic(it.fileName.toString(), input, e.error))
-                throw e
-            }
-            val name = root.relativize(it).toString()
-                .replace(".rho", "")
-                .replace("/", ".")
-            val clazz = Class.forName("dev.willbanders.rhovas.x.stdlib.${name}Kt")
-            val func = clazz.getDeclaredMethod("def${name.replace(".", "")}", Environment::class.java, Environment.Type::class.java)
-            val type = env.defType(name) {}.let { env.types[name]!! }
-            func.invoke(null, env, type)
-            verify(ast, type)
+            getOrInit(env, root.relativize(it).toString().replace(".rho", "").replace("/", "."))
         }
         env.defType("Lambda") {}
+    }
+
+    private fun getOrInit(env: Environment, name: String): Environment.Type {
+        return env.types.computeIfAbsent(name) {
+            env.defType(name) { init(env, it) }.let { env.types[name]!! }
+        }
+    }
+
+    private fun init(env: Environment, type: Environment.Type) {
+        val input = File("src/main/resources/stdlib/${type.name.replace(".", "/")}.rho").readText()
+        val ast = try {
+            RhovasParser(input).parse()
+        } catch(e: ParseException) {
+            println(Diagnostic(type.name, input, e.error))
+            throw e
+        }
+        ast.mbrs.forEach { when(it) {
+            is RhovasAst.Mbr.Cmpt.Class -> it.extends.forEach { type.extds[it.name] = getOrInit(env, it.name) }
+            is RhovasAst.Mbr.Cmpt.Interface -> it.extends.forEach { type.extds[it.name] = getOrInit(env, it.name) }
+        } }
+        val clazz = Class.forName("dev.willbanders.rhovas.x.stdlib.${type.name}Kt")
+        val func = clazz.getDeclaredMethod("def${type.name.replace(".", "")}", Environment::class.java, Environment.Type::class.java)
+        func.invoke(null, env, type)
+        verify(ast, type)
     }
 
     private fun verify(ast: RhovasAst.Source, type: Environment.Type) {
