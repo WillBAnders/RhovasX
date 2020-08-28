@@ -11,7 +11,7 @@ fun defKernel(env: Environment, type: Environment.Type) {
         type.reqFunc("range",3).invoke(args + listOf(env.init("Boolean", false)))
     }
     type.defFunc("range", 3) { args ->
-        val range = if (args[2].value as? Boolean == true || args[2].value as String == "incl") {
+        val range = if (args[2].value as? Boolean ?: args[2].type.name == "Atom" && args[2].value as String == "incl") {
             (args[0].value as Int).rangeTo(args[1].value as Int)
         } else {
             (args[0].value as Int).until(args[1].value as Int)

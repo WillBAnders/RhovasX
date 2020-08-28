@@ -76,6 +76,11 @@ sealed class RhovasAst {
             val stmts: List<Stmt>,
         ) : Stmt()
 
+        data class Label(
+            val label: String,
+            val stmt: Stmt,
+        ) : Stmt()
+
         data class Declaration(
             val mut: Boolean,
             val name: String,
@@ -108,6 +113,14 @@ sealed class RhovasAst {
         data class While(
             val cond: Expr,
             val body: Stmt,
+        ) : Stmt()
+
+        data class Break(
+            val label: String?,
+        ) : Stmt()
+
+        data class Continue(
+            val label: String?,
         ) : Stmt()
 
         data class Return(
@@ -185,11 +198,14 @@ sealed class RhovasAst {
                 is Stmt.Expression -> visit(ast)
                 is Stmt.Block -> visit(ast)
                 is Stmt.Declaration -> visit(ast)
+                is Stmt.Label -> visit(ast)
                 is Stmt.Assignment -> visit(ast)
                 is Stmt.If -> visit(ast)
                 is Stmt.Match -> visit(ast)
                 is Stmt.For -> visit(ast)
                 is Stmt.While -> visit(ast)
+                is Stmt.Break -> visit(ast)
+                is Stmt.Continue -> visit(ast)
                 is Stmt.Return -> visit(ast)
                 is Expr.Literal -> visit(ast)
                 is Expr.Group -> visit(ast)
@@ -225,6 +241,8 @@ sealed class RhovasAst {
 
         protected abstract fun visit(ast: Stmt.Block): T
 
+        protected abstract fun visit(ast: Stmt.Label): T
+
         protected abstract fun visit(ast: Stmt.Declaration): T
 
         protected abstract fun visit(ast: Stmt.Assignment): T
@@ -236,6 +254,10 @@ sealed class RhovasAst {
         protected abstract fun visit(ast: Stmt.For): T
 
         protected abstract fun visit(ast: Stmt.While): T
+
+        protected abstract fun visit(ast: Stmt.Break): T
+
+        protected abstract fun visit(ast: Stmt.Continue): T
 
         protected abstract fun visit(ast: Stmt.Return): T
 

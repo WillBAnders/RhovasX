@@ -206,17 +206,25 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "match" -> parseMatchStmt()
             "for" -> parseForStmt()
             "while" -> parseWhileStmt()
+            "break" -> parseBreakStmt()
+            "continue" -> parseContinueStmt()
             "return" -> parseReturnStmt()
             else -> {
                 context.push(tokens[0]!!.range)
-                val expr = parseExpr()
-                val stmt = if (match("=")) {
-                    val value = parseExpr()
-                    requireSemicolon { "An assignment statement must be followed by a semicolon `;`, as in `x = 0`." }
-                    RhovasAst.Stmt.Assignment(expr, value)
+                val stmt = if (match(RhovasTokenType.IDENTIFIER, ":")) {
+                    val label = tokens[-2]!!.literal
+                    val stmt = parseStatement()
+                    RhovasAst.Stmt.Label(label, stmt)
                 } else {
-                    requireSemicolon { "An expression statement must be followed by a semicolon `;`, as in `function();`." }
-                    RhovasAst.Stmt.Expression(expr)
+                    val expr = parseExpr()
+                    if (match("=")) {
+                        val value = parseExpr()
+                        requireSemicolon { "An assignment statement must be followed by a semicolon `;`, as in `x = 0`." }
+                        RhovasAst.Stmt.Assignment(expr, value)
+                    } else {
+                        requireSemicolon { "An expression statement must be followed by a semicolon `;`, as in `function();`." }
+                        RhovasAst.Stmt.Expression(expr)
+                    }
                 }
                 context.pop()
                 stmt
@@ -337,6 +345,18 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
         val body = parseStatement()
         context.pop()
         return RhovasAst.Stmt.While(cond, body)
+    }
+
+    private fun parseBreakStmt(): RhovasAst.Stmt.Break {
+        require(match("break"))
+        val label = if (match("@")) parseIdentifier { "A break statement with a label uses the form break@label, as in `break@loop;`." } else null
+        return RhovasAst.Stmt.Break(label)
+    }
+
+    private fun parseContinueStmt(): RhovasAst.Stmt.Continue {
+        require(match("continue"))
+        val label = if (match("@")) parseIdentifier { "A continue statement with a label uses the form break@label, as in `break@loop;`." } else null
+        return RhovasAst.Stmt.Continue(label)
     }
 
     private fun parseReturnStmt(): RhovasAst.Stmt.Return {

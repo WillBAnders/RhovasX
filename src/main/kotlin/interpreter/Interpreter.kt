@@ -6,6 +6,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
 
     var scope = Scope(null).also { it.funcs.putAll(env.reqType("Kernel").funcs) }
     private var type: Environment.Type? = null
+    private var label: String? = null
 
     override fun visit(ast: Source) {
         ast.impts.forEach { visit(it) }
@@ -132,6 +133,16 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         }
     }
 
+    override fun visit(ast: Stmt.Label): Any? {
+        val current = label
+        label = ast.label
+        try {
+            return visit(ast.stmt)
+        } finally {
+            label = current
+        }
+    }
+
     override fun visit(ast: Stmt.Declaration) {
         scope.vars[ast.name] = Environment.Variable(ast.name, ast.value
             ?.let { visit(it) as Environment.Object }
@@ -184,19 +195,60 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     }
 
     override fun visit(ast: Stmt.For) {
-        val rec = visit(ast.expr) as Environment.Object
-        rec.reqMthd("iterate", 1).invoke(listOf(rec, visit(Expr.Lambda(listOf(ast.name), ast.body))))
+        //TODO: Iterators
+        val label = this.label
+        for (value in (visit(ast.expr) as Environment.Object).value as Iterable<Environment.Object>) {
+            try {
+                scoped(Scope(scope)) {
+                    scope.vars[ast.name] = Environment.Variable(ast.name, value)
+                    visit(ast.body)
+                }
+            } catch (e: Break) {
+                if (e.label != null && e.label != label) {
+                    throw e
+                }
+                break
+            } catch (e: Continue) {
+                if (e.label != null && e.label != label) {
+                    throw e
+                }
+                continue
+            }
+        }
     }
 
     override fun visit(ast: Stmt.While) {
+        val label = this.label
         while (true) {
             val cond = visit(ast.cond) as Environment.Object
             when (cond.value) {
-                true -> visit(ast.body)
+                true -> {
+                    try {
+                        visit(ast.body)
+                    } catch (e: Break) {
+                        if (e.label != null && e.label != label) {
+                            throw e
+                        }
+                        break
+                    } catch (e: Continue) {
+                        if (e.label != null && e.label != label) {
+                            throw e
+                        }
+                        continue
+                    }
+                }
                 false -> break
                 else -> throw Exception("While condition must evaluate to a Boolean, received ${cond.type}.")
             }
         }
+    }
+
+    override fun visit(ast: Stmt.Break): Any? {
+        throw Break(ast.label)
+    }
+
+    override fun visit(ast: Stmt.Continue): Any? {
+        throw Continue(ast.label)
     }
 
     override fun visit(ast: Stmt.Return) {
@@ -306,10 +358,16 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     private fun <T> scoped(scope: Scope, block: () -> T): T {
         val current = this.scope
         this.scope = scope
-        val result = block()
-        this.scope = current
-        return result
+        try {
+            return block()
+        } finally {
+            this.scope = current
+        }
     }
+
+    data class Break(val label: String?) : Exception()
+
+    data class Continue(val label: String?) : Exception()
 
     data class Return(val value: Environment.Object) : Exception()
 
