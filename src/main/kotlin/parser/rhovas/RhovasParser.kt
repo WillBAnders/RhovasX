@@ -207,6 +207,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "for" -> parseForStmt()
             "while" -> parseWhileStmt()
             "try" -> parseTryStmt()
+            "with" -> parseWithStmt()
             "break" -> parseBreakStmt()
             "continue" -> parseContinueStmt()
             "throw" -> parseThrowStmt()
@@ -383,6 +384,28 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             stmt
         } else null
         return RhovasAst.Stmt.Try(body, catches, finally)
+    }
+
+    private fun parseWithStmt(): RhovasAst.Stmt.With {
+        require(match("with"))
+        context.push(tokens[-1]!!.range)
+        require(match("(")) { error(
+            "Expected opening parenthesis.",
+            "The variable of a with statement must be surrounded by parentheses `()`, as in `with (name = expr) { ... }`."
+        )}
+        val name = parseIdentifier { "The variable of a with statement requires a name, as in `with (name = expr) { ... }`." }
+        require(match("=")) { error(
+            "Expected equal sign.",
+            "The variable of a with statement must be followed by an equal sign `=`, as in `with (name = expr) { ... }`."
+        )}
+        val expr = parseExpr()
+        require(match(")")) { error(
+            "Expected closing parenthesis.",
+            "The variable of a with statement must be surrounded by parentheses `()`, as in `with (name = expr) { ... }`."
+        )}
+        val body = parseStatement()
+        context.pop()
+        return RhovasAst.Stmt.With(name, expr, body)
     }
 
     private fun parseBreakStmt(): RhovasAst.Stmt.Break {

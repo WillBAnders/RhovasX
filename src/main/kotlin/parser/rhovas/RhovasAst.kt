@@ -129,6 +129,12 @@ sealed class RhovasAst {
 
         }
 
+        data class With(
+            val name: String,
+            val expr: Expr,
+            val body: Stmt,
+        ) : Stmt()
+
         data class Break(
             val label: String?,
         ) : Stmt()
@@ -223,6 +229,7 @@ sealed class RhovasAst {
                 is Stmt.For -> visit(ast)
                 is Stmt.While -> visit(ast)
                 is Stmt.Try -> visit(ast)
+                is Stmt.With -> visit(ast)
                 is Stmt.Break -> visit(ast)
                 is Stmt.Continue -> visit(ast)
                 is Stmt.Throw -> visit(ast)
@@ -276,6 +283,8 @@ sealed class RhovasAst {
         protected abstract fun visit(ast: Stmt.While): T
 
         protected abstract fun visit(ast: Stmt.Try): T
+
+        protected abstract fun visit(ast: Stmt.With): T
 
         protected abstract fun visit(ast: Stmt.Break): T
 

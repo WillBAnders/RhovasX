@@ -265,6 +265,18 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         }
     }
 
+    override fun visit(ast: Stmt.With) {
+        val expr = visit(ast.expr) as Environment.Object
+        try {
+            scoped(Scope(scope)) {
+                scope.vars[ast.name] = Environment.Variable(ast.name, expr)
+                visit(ast.body)
+            }
+        } finally {
+            //TODO autocloseable
+        }
+    }
+
     override fun visit(ast: Stmt.Break) {
         throw Break(ast.label)
     }
