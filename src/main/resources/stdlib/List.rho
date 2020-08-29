@@ -1,0 +1,21 @@
+class List<T>: Equatable {
+
+    val size: Integer;
+
+    func op[] get(index: Integer): T {}
+
+    func op[]= set(index: Integer, value: T) {}
+
+    func op+ concat(other: List<T>): List<T> {}
+
+    func iterate(lambda: Lambda) {}
+
+    func map(lambda: Lambda): List {}
+
+    func filter(lambda: Lambda): List<T> {}
+
+    func op== equals(other: List<T>): Boolean {}
+
+    func toString(): String {}
+
+}

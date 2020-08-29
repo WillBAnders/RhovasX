@@ -1,0 +1,5 @@
+interface Equatable {
+
+    func op== equals(other: This): Boolean {}
+
+}

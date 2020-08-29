@@ -1,0 +1,25 @@
+class Map<K, V>: Equatable {
+    val keys: List<K>
+    val values: List<V>
+    val entries: List<List>
+    val size: Integer;
+
+    func op[] get(key: K): V {}
+
+    func op[]= set(key: K, value: V) {}
+
+    func merge(other: Map) {}
+
+    func merge(other: Map, overwrite: Boolean) {}
+
+    func iterate(lambda: Lambda) {}
+
+    func map(lambda: Lambda): Map {}
+
+    func filter(lambda: Lambda): Map<K, V> {}
+
+    func op== equals(other: Map<K, V>): Boolean {}
+
+    func toString(): String {}
+
+}

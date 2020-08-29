@@ -1,0 +1,20 @@
+class String: Equatable {
+
+    val length: Integer;
+    val chars: List<Character>;
+
+    func op+ concat(object: Object): String {}
+
+    func contains(other: String): Boolean {}
+
+    func substring(start: Integer): String {}
+
+    func substring(start: Integer, end: Integer): String {}
+
+    func op== equals(other: String): Boolean {}
+
+    func op<=> compare(other: String): Atom {}
+
+    func toString(): String;
+
+}

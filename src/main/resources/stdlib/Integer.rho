@@ -1,0 +1,19 @@
+class Integer: Comparable {
+
+    func op+ add(other: Integer): Integer {}
+
+    func op- sub(other: Integer): Integer {}
+
+    func op* mul(other: Integer): Integer {}
+
+    func op/ div(other: Integer): Integer {}
+
+    func mod(other: Integer): Integer {}
+
+    func rem(other: Integer): Integer {}
+
+    func op<=> compare(other: Integer): Atom {}
+
+    func toString(): String {}
+
+}

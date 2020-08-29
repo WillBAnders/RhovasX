@@ -1,0 +1,11 @@
+class Character: Comparable {
+
+    func op+ concat(other: String): Decimal {}
+
+    func op<=> compare(other: Decimal): Atom {}
+
+    func hashCode(): Integer {}
+
+    func toString(): String {}
+
+}

@@ -1,0 +1,15 @@
+class Decimal: Comparable {
+
+    func op+ add(other: Decimal): Decimal {}
+
+    func op- sub(other: Decimal): Decimal {}
+
+    func op* mul(other: Decimal): Decimal {}
+
+    func op/ div(other: Decimal): Decimal {}
+
+    func op<=> compare(other: Decimal): Atom {}
+
+    func toString(): String {}
+
+}

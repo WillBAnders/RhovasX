@@ -20,9 +20,7 @@ object Stdlib {
     }
 
     private fun getOrInit(env: Environment, name: String): Environment.Type {
-        return env.types.computeIfAbsent(name) {
-            env.defType(name) { init(env, it) }.let { env.types[name]!! }
-        }
+        return env.types[name] ?: env.defType(name) { init(env, it) }.let { env.types[name]!! }
     }
 
     private fun init(env: Environment, type: Environment.Type) {
