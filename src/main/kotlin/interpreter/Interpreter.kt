@@ -8,6 +8,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     private val types = mutableMapOf<String, Environment.Type>()
     private var type: Environment.Type? = null
     private var label: String? = null
+    private var match: Environment.Object? = null
 
     override fun visit(ast: Source) {
         ast.impts.forEach { visit(it) }
@@ -185,19 +186,69 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     }
 
     override fun visit(ast: Stmt.Match) {
-        val args = ast.args.map { visit(it) }
+        val match = this.match
+        val args = ast.args.map { visit(it) as Environment.Object }
         val case = when (args.size) {
-            0 -> ast.cases.firstOrNull { c ->
-                c.first.any { it is Expr.Access && it.rec == null && it.name == "else" || (visit(it) as Environment.Object).value == true }
-            } ?: return
-            1 -> ast.cases.firstOrNull { c ->
-                val arg = visit(ast.args[0]) as Environment.Object
-                val method = arg.reqMthd("==", 1)
-                c.first.any { it is Expr.Access && it.rec == null && it.name == "else" || method.invoke(listOf(arg, visit(it) as Environment.Object)).value == true }
-            } ?: throw Exception("Structural match must cover all cases or have an `else` case (missed ${args[0]})")
+            0 -> ast.cases.firstOrNull { it.patterns.any { (visit((it as Stmt.Match.Pattern.Expression).expr) as Environment.Object).value as Boolean } } ?: return
+            1 -> {
+                this.match = args[0]
+                ast.cases.firstOrNull { it.patterns.any { visit(it) as Boolean } }
+                    ?: throw Exception("Structural match must cover all cases or have an `else` case (missed ${args[0].reqMthd("toString", 0).invoke(listOf(args[0])).value})")
+            }
             else -> TODO("Semantics for match with multiple arguments.")
         }
-        visit(case.second)
+        visit(case.stmt)
+        this.match = match
+    }
+
+    override fun visit(ast: Stmt.Match.Case): Boolean {
+        return ast.patterns.any { visit(it) as Boolean }
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.Expression): Boolean {
+        return match!!.reqMthd("==", 1).invoke(listOf(match!!, visit(ast.expr) as Environment.Object)).value == true
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.Variable) : Boolean {
+        ast.name?.let { scope.vars[it] = Environment.Variable(it, match!!) }
+        return true
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.List): Boolean {
+        val match = this.match
+        val list = match?.value as? List<Environment.Object> ?: return false
+        if (list.size < ast.elmts.size || list.size > ast.elmts.size && ast.rest == null) return false
+        val res = ast.elmts.withIndex().all { pattern ->
+            list.getOrNull(pattern.index)?.let {
+                this.match = it
+                visit(pattern.value) as Boolean
+            } == true
+        }
+        if (res && ast.rest != null) {
+            scope.vars[ast.rest] = Environment.Variable(ast.rest, env.init("List", list.subList(ast.elmts.size, list.size)))
+        }
+        this.match = match
+        return res
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.Map): Boolean {
+        val match = this.match!!
+        if (!(match.type.flds.keys - ast.elmts.keys).isEmpty() && ast.rest == null) return false
+        val res = ast.elmts.all { pattern ->
+            match.type.getFld(pattern.key)?.let {
+                this.match = it.value
+                visit(pattern.value) as Boolean
+            } == true
+        }
+        if (res && ast.rest != null) {
+            scope.vars[ast.rest] = Environment.Variable(ast.rest, env.init("Map", (match.type.flds.keys - ast.elmts.keys).map { Pair(it, match.reqProp(it)) }.toMap()))
+        }
+        this.match = match
+        return res
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.Else): Any? {
+        return ast.pattern?.let { visit(it) as Boolean } ?: true
     }
 
     override fun visit(ast: Stmt.For) {

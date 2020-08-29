@@ -101,8 +101,41 @@ sealed class RhovasAst {
 
         data class Match(
             val args: List<Expr>,
-            val cases: List<Pair<List<Expr>, Stmt>>,
-        ) : Stmt()
+            val cases: List<Case>,
+        ) : Stmt() {
+
+            data class Case(
+                val patterns: List<Pattern>,
+                val stmt: Stmt,
+            ) : RhovasAst()
+
+            sealed class Pattern : RhovasAst() {
+
+                data class Expression(
+                    val expr: Expr,
+                ) : Pattern()
+
+                data class Variable(
+                    val name: String?,
+                ) : Pattern()
+
+                data class List(
+                    val elmts: kotlin.collections.List<Pattern>,
+                    val rest: String?,
+                ) : Pattern()
+
+                data class Map(
+                    val elmts: kotlin.collections.Map<String, Pattern>,
+                    val rest: String?,
+                ) : Pattern()
+
+                data class Else(
+                    val pattern: Pattern?
+                ) : Pattern()
+
+            }
+
+        }
 
         data class For(
             val name: String,
@@ -238,6 +271,12 @@ sealed class RhovasAst {
                 is Stmt.Assignment -> visit(ast)
                 is Stmt.If -> visit(ast)
                 is Stmt.Match -> visit(ast)
+                is Stmt.Match.Case -> visit(ast)
+                is Stmt.Match.Pattern.Expression -> visit(ast)
+                is Stmt.Match.Pattern.Variable -> visit(ast)
+                is Stmt.Match.Pattern.List -> visit(ast)
+                is Stmt.Match.Pattern.Map -> visit(ast)
+                is Stmt.Match.Pattern.Else -> visit(ast)
                 is Stmt.For -> visit(ast)
                 is Stmt.While -> visit(ast)
                 is Stmt.Try -> visit(ast)
@@ -292,6 +331,18 @@ sealed class RhovasAst {
         protected abstract fun visit(ast: Stmt.If): T
 
         protected abstract fun visit(ast: Stmt.Match): T
+
+        protected abstract fun visit(ast: Stmt.Match.Case): T
+
+        protected abstract fun visit(ast: Stmt.Match.Pattern.Expression): T
+
+        protected abstract fun visit(ast: Stmt.Match.Pattern.Variable): T
+
+        protected abstract fun visit(ast: Stmt.Match.Pattern.List): T
+
+        protected abstract fun visit(ast: Stmt.Match.Pattern.Map): T
+
+        protected abstract fun visit(ast: Stmt.Match.Pattern.Else): T
 
         protected abstract fun visit(ast: Stmt.For): T
 

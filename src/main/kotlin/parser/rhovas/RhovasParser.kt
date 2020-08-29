@@ -295,11 +295,15 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "Expected opening brace.",
             "The cases of a match statement must be surrounded by braces `{}`, as in `match { cond: ... }`."
         )}
-        val cases = mutableListOf<Pair<List<RhovasAst.Expr>, RhovasAst.Stmt>>()
+        val cases = mutableListOf<RhovasAst.Stmt.Match.Case>()
         while (!match("}")) {
-            val exprs = mutableListOf<RhovasAst.Expr>()
+            val patterns = mutableListOf<RhovasAst.Stmt.Match.Pattern>()
             do {
-                exprs.add(parseExpr())
+                patterns.add(when {
+                    match("else") -> RhovasAst.Stmt.Match.Pattern.Else(if (!peek(":")) parseMatchPattern() else null)
+                    args.isEmpty() -> RhovasAst.Stmt.Match.Pattern.Expression(parseExpr())
+                    else -> parseMatchPattern()
+                })
                 context.push(tokens[-1]!!.range)
             } while (match(","))
             require(match(":")) { error(
@@ -307,11 +311,68 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                 "The condition of a match case must be followed by a colon `:`, as in `match { cond: ... }`."
             )}
             val stmt = parseStatement()
-            repeat(exprs.size) { context.pop() }
-            cases.add(Pair(exprs, stmt))
+            repeat(patterns.size) { context.pop() }
+            cases.add(RhovasAst.Stmt.Match.Case(patterns, stmt))
         }
         context.pop()
         return RhovasAst.Stmt.Match(args, cases)
+    }
+
+    private fun parseMatchPattern(): RhovasAst.Stmt.Match.Pattern {
+        return when {
+            match(RhovasTokenType.IDENTIFIER) -> RhovasAst.Stmt.Match.Pattern.Variable(tokens[-1]!!.literal)
+            match("[") -> {
+                val elmts = mutableListOf<RhovasAst.Stmt.Match.Pattern>()
+                var rest: String? = null
+                while (!match("]")) {
+                    val pattern = parseMatchPattern()
+                    if (match(".", ".")) {
+                        require(pattern is RhovasAst.Stmt.Match.Pattern.Variable) { error(
+                            "Invalid sequence target.",
+                            "A list sequence pattern must be applied to a variable, as in `[head, tail..]`."
+                        )}
+                        rest = (pattern as RhovasAst.Stmt.Match.Pattern.Variable).name
+                        require(peek("]")) { error(
+                            "Expected closing square bracket.",
+                            "A list sequence pattern must be in the tail position of the list, as in `[head, tail..]`."
+                        )}
+                    } else {
+                        elmts.add(pattern)
+                        require(peek("]") || match(",")) { error(
+                            "Expected closing square bracket or comma.",
+                            "A list pattern argument must be followed by a closing square bracket `]` or comma `,` for additional arguments, as in `[head, tail..]`."
+                        )}
+                    }
+
+                }
+                RhovasAst.Stmt.Match.Pattern.List(elmts, rest)
+            }
+            match("{") -> {
+                val elmts = mutableMapOf<String, RhovasAst.Stmt.Match.Pattern>()
+                var rest: String? = null
+                while (!match("}")) {
+                    val name = parseIdentifier { "A map entry pattern must start with a name, as in `{x, y = 5, rest..}`." }
+                    elmts[name] = when {
+                        match("=") -> parseMatchPattern()
+                        match(".", ".") -> {
+                            rest = name
+                            require(peek("}")) { error(
+                                "Expected closing brace.",
+                                "A sequence pattern must be in the tail position of the map, as in `{x, y = 5, rest..}`."
+                            )}
+                            continue
+                        }
+                        else -> RhovasAst.Stmt.Match.Pattern.Variable(name)
+                    }
+                    require(peek("}") || match(",")) { error(
+                        "Expected closing brace or comma.",
+                        "A map pattern argument must be followed by a closing brace `}` or comma `,` for additional arguments, as in `{x, y = 5, rest..}`."
+                    )}
+                }
+                RhovasAst.Stmt.Match.Pattern.Map(elmts, rest)
+            }
+            else -> RhovasAst.Stmt.Match.Pattern.Expression(parseExpr())
+        }
     }
 
     private fun parseForStmt(): RhovasAst.Stmt.For {
