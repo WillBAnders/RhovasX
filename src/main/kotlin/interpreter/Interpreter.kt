@@ -16,7 +16,11 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         }
         val main = ast.mbrs.find {it is Mbr.Function && it.name == "main" }
         if (main != null) {
-            visit((main as Mbr.Function).body)
+            try {
+                visit((main as Mbr.Function).body)
+            } catch (e: Throw) {
+                println("Uncaught exception: " + e.value.reqMthd("toString", 0).invoke(listOf(e.value)).value)
+            }
         }
     }
 
@@ -100,7 +104,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
                         visit(ast.body)
                         env.init("Null", null)
                     } catch (e: Return) {
-                        e.value
+                        e.value ?: env.init("Null", null)
                     }
                 }
             }
@@ -115,7 +119,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
                         visit(ast.body)
                         env.init("Null", null)
                     } catch (e: Return) {
-                        e.value
+                        e.value ?: env.init("Null", null)
                     }
                 }
             }
@@ -243,16 +247,36 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         }
     }
 
-    override fun visit(ast: Stmt.Break): Any? {
+    override fun visit(ast: Stmt.Try) {
+        try {
+            visit(ast.body)
+        } catch (e: Throw) {
+            val catch = ast.catches.find {
+                e.value.type.isSubtypeOf(env.reqType(it.type.name))
+            } ?: throw e
+            scoped(Scope(scope)) {
+                scope.vars[catch.name] = Environment.Variable(catch.name, e.value)
+                visit(catch.body)
+            }
+        } finally {
+            ast.finally?.let { visit(it) }
+        }
+    }
+
+    override fun visit(ast: Stmt.Break) {
         throw Break(ast.label)
     }
 
-    override fun visit(ast: Stmt.Continue): Any? {
+    override fun visit(ast: Stmt.Continue) {
         throw Continue(ast.label)
     }
 
+    override fun visit(ast: Stmt.Throw) {
+        throw Throw(visit(ast.value) as Environment.Object)
+    }
+
     override fun visit(ast: Stmt.Return) {
-        throw Return(visit(ast.value) as Environment.Object)
+        throw Return(ast.value?.let { visit(it) as Environment.Object })
     }
 
     override fun visit(ast: Expr.Literal): Environment.Object {
@@ -345,7 +369,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
                     visit(ast.body)
                     env.init("Null", null)
                 } catch (e: Return) {
-                    e.value
+                    e.value ?: env.init("Null", null)
                 }
             }
         })
@@ -369,6 +393,8 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
 
     data class Continue(val label: String?) : Exception()
 
-    data class Return(val value: Environment.Object) : Exception()
+    data class Throw(val value: Environment.Object) : Exception()
+
+    data class Return(val value: Environment.Object?) : Exception()
 
 }

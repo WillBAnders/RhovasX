@@ -115,6 +115,20 @@ sealed class RhovasAst {
             val body: Stmt,
         ) : Stmt()
 
+        data class Try(
+            val body: Stmt,
+            val catches: List<Catch>,
+            val finally: Stmt?,
+        ) : Stmt() {
+
+            data class Catch(
+                val name: String,
+                val type: Type,
+                val body: Stmt,
+            )
+
+        }
+
         data class Break(
             val label: String?,
         ) : Stmt()
@@ -123,8 +137,12 @@ sealed class RhovasAst {
             val label: String?,
         ) : Stmt()
 
-        data class Return(
+        data class Throw(
             val value: Expr,
+        ) : Stmt()
+
+        data class Return(
+            val value: Expr?,
         ) : Stmt()
 
     }
@@ -204,8 +222,10 @@ sealed class RhovasAst {
                 is Stmt.Match -> visit(ast)
                 is Stmt.For -> visit(ast)
                 is Stmt.While -> visit(ast)
+                is Stmt.Try -> visit(ast)
                 is Stmt.Break -> visit(ast)
                 is Stmt.Continue -> visit(ast)
+                is Stmt.Throw -> visit(ast)
                 is Stmt.Return -> visit(ast)
                 is Expr.Literal -> visit(ast)
                 is Expr.Group -> visit(ast)
@@ -255,9 +275,13 @@ sealed class RhovasAst {
 
         protected abstract fun visit(ast: Stmt.While): T
 
+        protected abstract fun visit(ast: Stmt.Try): T
+
         protected abstract fun visit(ast: Stmt.Break): T
 
         protected abstract fun visit(ast: Stmt.Continue): T
+
+        protected abstract fun visit(ast: Stmt.Throw): T
 
         protected abstract fun visit(ast: Stmt.Return): T
 
