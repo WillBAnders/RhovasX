@@ -151,6 +151,18 @@ sealed class RhovasAst {
             val value: Expr?,
         ) : Stmt()
 
+        data class Assert(
+            val cond: Expr,
+        ) : Stmt()
+
+        data class Require(
+            val cond: Expr,
+        ) : Stmt()
+
+        data class Ensure(
+            val cond: Expr,
+        ) : Stmt()
+
     }
 
     sealed class Expr : RhovasAst() {
@@ -234,6 +246,9 @@ sealed class RhovasAst {
                 is Stmt.Continue -> visit(ast)
                 is Stmt.Throw -> visit(ast)
                 is Stmt.Return -> visit(ast)
+                is Stmt.Assert -> visit(ast)
+                is Stmt.Require -> visit(ast)
+                is Stmt.Ensure -> visit(ast)
                 is Expr.Literal -> visit(ast)
                 is Expr.Group -> visit(ast)
                 is Expr.Unary -> visit(ast)
@@ -293,6 +308,12 @@ sealed class RhovasAst {
         protected abstract fun visit(ast: Stmt.Throw): T
 
         protected abstract fun visit(ast: Stmt.Return): T
+
+        protected abstract fun visit(ast: Stmt.Assert): T
+
+        protected abstract fun visit(ast: Stmt.Require): T
+
+        protected abstract fun visit(ast: Stmt.Ensure): T
 
         protected abstract fun visit(ast: Expr.Literal): T
 

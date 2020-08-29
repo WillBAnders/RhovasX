@@ -212,6 +212,9 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "continue" -> parseContinueStmt()
             "throw" -> parseThrowStmt()
             "return" -> parseReturnStmt()
+            "assert" -> parseAssertStmt()
+            "require" -> parseRequireStmt()
+            "ensure" -> parseEnsureStmt()
             else -> {
                 context.push(tokens[0]!!.range)
                 val stmt = if (match(RhovasTokenType.IDENTIFIER, ":")) {
@@ -438,6 +441,33 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
         requireSemicolon { "A return statement must be followed by a semicolon `;`, as in `return 0;`." }
         context.pop()
         return RhovasAst.Stmt.Return(value)
+    }
+
+    private fun parseAssertStmt(): RhovasAst.Stmt.Assert {
+        require(match("assert"))
+        context.push(tokens[-1]!!.range)
+        val expr = parseExpr()
+        requireSemicolon { "An assert statement must be followed by a semicolon `;`, as in `assert expr;`." }
+        context.pop()
+        return RhovasAst.Stmt.Assert(expr)
+    }
+
+    private fun parseRequireStmt(): RhovasAst.Stmt.Require {
+        require(match("require"))
+        context.push(tokens[-1]!!.range)
+        val expr = parseExpr()
+        requireSemicolon { "A require statement must be followed by a semicolon `;`, as in `require expr;`." }
+        context.pop()
+        return RhovasAst.Stmt.Require(expr)
+    }
+
+    private fun parseEnsureStmt(): RhovasAst.Stmt.Ensure {
+        require(match("ensure"))
+        context.push(tokens[-1]!!.range)
+        val expr = parseExpr()
+        requireSemicolon { "An ensure statement must be followed by a semicolon `;`, as in `ensure expr;`." }
+        context.pop()
+        return RhovasAst.Stmt.Ensure(expr)
     }
 
     private fun parseExpr(): RhovasAst.Expr {

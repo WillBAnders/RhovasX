@@ -293,6 +293,24 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         throw Return(ast.value?.let { visit(it) as Environment.Object })
     }
 
+    override fun visit(ast: Stmt.Assert) {
+        if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
+            throw Exception("Assert failure: " + ast.cond)
+        }
+    }
+
+    override fun visit(ast: Stmt.Require) {
+        if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
+            throw Exception("Require failure: " + ast.cond)
+        }
+    }
+
+    override fun visit(ast: Stmt.Ensure) {
+        if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
+            throw Exception("Ensure failure: " + ast.cond)
+        }
+    }
+
     override fun visit(ast: Expr.Literal): Environment.Object {
         return when(ast.literal) {
             null -> env.init("Null", null)
