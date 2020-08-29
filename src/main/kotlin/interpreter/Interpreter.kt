@@ -39,8 +39,12 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         TODO()
     }
 
+    override fun visit(ast: Modifiers): Any? {
+        TODO("Not yet implemented")
+    }
+
     override fun visit(ast: Mbr.Cmpt.Class) {
-        env.defType(ast.name) { t ->
+        env.defType(ast.type.name) { t ->
             val current = type
             type = t
             ast.mbrs.forEach { visit(it) }

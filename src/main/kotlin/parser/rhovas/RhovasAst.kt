@@ -15,29 +15,45 @@ sealed class RhovasAst {
     ) : RhovasAst()
 
     data class Type(
+        val mut: Mutability,
         val name: String,
         val generics: List<Type>,
-    ) : RhovasAst()
+    ) : RhovasAst() {
+
+        enum class Mutability { MUTABLE, IMMUTABLE, VIEWABLE }
+
+    }
 
     data class Parameter(
         val name: String,
         val type: Type,
     ) : RhovasAst()
 
+    data class Modifiers(
+        val visibility: Visibility?,
+        val virtual: Boolean,
+        val abstract: Boolean,
+        val override: Boolean,
+    ) : RhovasAst() {
+
+        enum class Visibility { PUBLIC, PACKAGE, PROTECTED, PRIVATE }
+
+    }
+
     sealed class Mbr : RhovasAst() {
 
         sealed class Cmpt : Mbr() {
 
             data class Class(
-                val name: String,
-                val generics: List<Type>,
+                val modifiers: Modifiers,
+                val type: Type,
                 val extends: List<Type>,
                 val mbrs: List<Mbr>,
             ) : Cmpt()
 
             data class Interface(
-                val name: String,
-                val generics: List<Type>,
+                val modifiers: Modifiers,
+                val type: Type,
                 val extends: List<Type>,
                 val mbrs: List<Mbr>,
             ) : Cmpt()
@@ -45,6 +61,7 @@ sealed class RhovasAst {
         }
 
         data class Property(
+            val modifiers: Modifiers,
             val mut: Boolean,
             val name: String,
             val type: Type?,
@@ -52,15 +69,23 @@ sealed class RhovasAst {
         ) : Mbr()
 
         data class Constructor(
+            val modifiers: Modifiers,
+            val ex: Boolean,
             val params: List<Parameter>,
+            val throws: List<Type>,
             val body: Stmt,
         ) : Mbr()
 
         data class Function(
+            val modifiers: Modifiers,
             val op: String?,
+            val mut: Boolean,
+            val pure: Boolean,
             val name: String,
+            val ex: Boolean,
             val params: List<Parameter>,
             val ret: Type?,
+            val throws: List<Type>,
             val body: Stmt,
         ) : Mbr()
 
@@ -236,6 +261,7 @@ sealed class RhovasAst {
         data class Function(
             val rec: Expr?,
             val name: String,
+            val ex: Boolean,
             val args: List<Expr>,
         ) : Expr()
 
@@ -259,6 +285,7 @@ sealed class RhovasAst {
                 is Import -> visit(ast)
                 is Type -> visit(ast)
                 is Parameter -> visit(ast)
+                is Modifiers -> visit(ast)
                 is Mbr.Cmpt.Class -> visit(ast)
                 is Mbr.Cmpt.Interface -> visit(ast)
                 is Mbr.Property -> visit(ast)
@@ -307,6 +334,8 @@ sealed class RhovasAst {
         protected abstract fun visit(ast: Type): T
 
         protected abstract fun visit(ast: Parameter): T
+
+        protected abstract fun visit(ast: Modifiers): T
 
         protected abstract fun visit(ast: Mbr.Cmpt.Class): T
 

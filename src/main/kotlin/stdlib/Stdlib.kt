@@ -46,24 +46,24 @@ object Stdlib {
     private fun verify(ast: RhovasAst.Source, type: Environment.Type) {
         val funcs = mutableSetOf<Pair<String, Int>>()
         ast.mbrs.filterIsInstance<RhovasAst.Mbr.Cmpt.Class>().forEach { mbr ->
-            require(type.name == mbr.name) { "Unexpected component on type ${type.name}: ${mbr.name}." }
+            require(type.name == mbr.type.name) { "Unexpected component on type ${type.name}: ${mbr.type.name}." }
             val props = mbr.mbrs.filterIsInstance<RhovasAst.Mbr.Property>().map { it.name }.toSet()
             require(type.props.keys == props) { "Invalid properties on type ${type.name}: Expected " + (props - type.props.keys) + ", Unexpected " + (type.props.keys - props) + "."}
             val mthds = mbr.mbrs.filterIsInstance<RhovasAst.Mbr.Function>().flatMap { func ->
                 listOf(Pair(func.name, func.params.size)) + (func.op?.let { listOf(Pair(it, func.params.size)) } ?: listOf())
             }.toSet()
             require(type.mthds.keys == mthds) { "Invalid methods on type ${type.name}: Expected " + (mthds - type.mthds.keys) + ", Unexpected " + (type.mthds.keys - mthds) + "."}
-            funcs.addAll(mbr.mbrs.filterIsInstance<RhovasAst.Mbr.Constructor>().map { Pair(mbr.name, it.params.size) })
+            funcs.addAll(mbr.mbrs.filterIsInstance<RhovasAst.Mbr.Constructor>().map { Pair(mbr.type.name, it.params.size) })
         }
         ast.mbrs.filterIsInstance<RhovasAst.Mbr.Cmpt.Interface>().forEach { mbr ->
-            require(type.name == mbr.name) { "Unexpected component on type ${type.name}: ${mbr.name}." }
+            require(type.name == mbr.type.name) { "Unexpected component on type ${type.name}: ${mbr.type.name}." }
             val props = mbr.mbrs.filterIsInstance<RhovasAst.Mbr.Property>().map { it.name }.toSet()
             require(type.props.keys == props) { "Invalid properties on type ${type.name}: Expected " + (props - type.props.keys) + ", Unexpected " + (type.props.keys - props) + "."}
             val mthds = mbr.mbrs.filterIsInstance<RhovasAst.Mbr.Function>().flatMap { func ->
                 listOf(Pair(func.name, func.params.size)) + (func.op?.let { listOf(Pair(it, func.params.size)) } ?: listOf())
             }.toSet()
             require(type.mthds.keys == mthds) { "Invalid methods on type ${type.name}: Expected " + (mthds - type.mthds.keys) + ", Unexpected " + (type.mthds.keys - mthds) + "."}
-            funcs.addAll(mbr.mbrs.filterIsInstance<RhovasAst.Mbr.Constructor>().map { Pair(mbr.name, it.params.size) })
+            funcs.addAll(mbr.mbrs.filterIsInstance<RhovasAst.Mbr.Constructor>().map { Pair(mbr.type.name, it.params.size) })
         }
         val vars = ast.mbrs.filterIsInstance<RhovasAst.Mbr.Property>().map { it.name }.toSet()
         require(type.vars.keys == vars) { "Invalid variables on type ${type.name}: Expected " + (vars - type.vars.keys) + ", Unexpected " + (type.vars.keys - vars) + "." }
