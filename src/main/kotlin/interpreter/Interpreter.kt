@@ -4,7 +4,8 @@ import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst.*
 
 class Interpreter(private val env: Environment) : Visitor<Any?>() {
 
-    var scope = Scope(null).also { it.funcs.putAll(env.reqType("Kernel").funcs) }
+    private var scope = Scope(null).also { it.funcs.putAll(env.reqType("Kernel").funcs) }
+    private val types = mutableMapOf<String, Environment.Type>()
     private var type: Environment.Type? = null
     private var label: String? = null
 
@@ -25,7 +26,8 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     }
 
     override fun visit(ast: Import) {
-        TODO()
+        val name = ast.name ?: ast.path.last()
+        types[name] = env.reqType(ast.path.joinToString("."))
     }
 
     override fun visit(ast: Type): Any? {
@@ -252,7 +254,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             visit(ast.body)
         } catch (e: Throw) {
             val catch = ast.catches.find {
-                e.value.type.isSubtypeOf(env.reqType(it.type.name))
+                e.value.type.isSubtypeOf(reqType(it.type.name))
             } ?: throw e
             scoped(Scope(scope)) {
                 scope.vars[catch.name] = Environment.Variable(catch.name, e.value)
@@ -387,6 +389,10 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         } finally {
             this.scope = current
         }
+    }
+
+    private fun reqType(name: String): Environment.Type {
+        return types[name] ?: env.reqType(name)
     }
 
     data class Break(val label: String?) : Exception()
