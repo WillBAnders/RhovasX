@@ -8,10 +8,6 @@ class Map<K, V>: Equatable {
 
     func op[]= set(key: K, value: V) {}
 
-    func merge(other: Map) {}
-
-    func merge(other: Map, overwrite: Boolean) {}
-
     func iterate(lambda: Lambda) {}
 
     func map(lambda: Lambda): Map {}
