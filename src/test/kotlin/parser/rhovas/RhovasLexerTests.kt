@@ -22,8 +22,8 @@ class RhovasLexerTests {
         return Stream.of(
             Arguments.of("Lowercase", "abc"),
             Arguments.of("Uppercase", "ABC"),
-            Arguments.of("Underscores", "_abc_"),
-            Arguments.of("Hyphens", "a-b-c")
+            Arguments.of("Numerical", "abc123"),
+            Arguments.of("Underscores", "_abc_")
         )
     }
 
