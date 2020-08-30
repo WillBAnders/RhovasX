@@ -1,0 +1,9 @@
+class Atom: Equatable {
+
+    val name: String;
+
+    func op== equals(other: Atom): Boolean {}
+
+    func toString(): String;
+
+}
