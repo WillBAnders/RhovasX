@@ -15,6 +15,6 @@ class String: Equatable {
 
     func op<=> compare(other: String): Atom {}
 
-    func toString(): String;
+    func toString(): String {}
 
 }

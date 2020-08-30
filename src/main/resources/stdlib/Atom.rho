@@ -4,6 +4,6 @@ class Atom: Equatable {
 
     func op== equals(other: Atom): Boolean {}
 
-    func toString(): String;
+    func toString(): String {}
 
 }

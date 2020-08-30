@@ -3,10 +3,7 @@ package dev.willbanders.rhovas.x.stdlib
 import dev.willbanders.rhovas.x.interpreter.Environment
 
 fun defList(env: Environment, type: Environment.Type) {
-    type.defProp("size",
-        { env.init("Integer", (it[0] as List<Environment.Object>).size) },
-        { throw Exception("List.size is read only.") },
-    )
+    type.defProp("size", { env.init("Integer", (it[0] as List<Environment.Object>).size) }, { throw Exception("List.size is read only.") },)
 
     type.defMthd("[]", 1) { it[0].reqMthd("get", 1).invoke(it) }
     type.defMthd("get", 1) { args ->

@@ -9,7 +9,7 @@ import dev.willbanders.rhovas.x.stdlib.Stdlib
 import java.io.File
 
 val ENV = Environment()
-const val PATH = "src/main/resources/Main.rho"
+const val PATH = "src/main/resources/maptest.rho"
 
 fun main() {
     Stdlib.init(ENV)

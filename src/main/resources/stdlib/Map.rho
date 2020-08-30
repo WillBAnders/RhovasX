@@ -1,18 +1,18 @@
 class Map<K, V>: Equatable {
-    val keys: List<K>
-    val values: List<V>
-    val entries: List<List>
+    val keys: List<K>;
+    val values: List<V>;
+    val entries: List<List>;
     val size: Integer;
+
+    func map(lambda: Lambda): Map {}
+
+    func filter(lambda: Lambda): Map<K, V> {}
 
     func op[] get(key: K): V {}
 
     func op[]= set(key: K, value: V) {}
 
     func iterate(lambda: Lambda) {}
-
-    func map(lambda: Lambda): Map {}
-
-    func filter(lambda: Lambda): Map<K, V> {}
 
     func op== equals(other: Map<K, V>): Boolean {}
 
