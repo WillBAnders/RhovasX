@@ -634,7 +634,8 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             match(RhovasTokenType.STRING) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal.removeSurrounding("\""))
             match(".") -> {
                 val name = parseIdentifier { "Context access requires an identifier, as in `.name`." }
-                RhovasAst.Expr.Access(RhovasAst.Expr.Access(null, "this"), name)
+                val rec = RhovasAst.Expr.Access(null, "this")
+                if (peek(listOf("(", "{")) || peek("!", listOf("(", "{"))) parseFunctionExpr(rec, name) else RhovasAst.Expr.Access(rec, name)
             }
             match(":", RhovasTokenType.IDENTIFIER) -> RhovasAst.Expr.Literal(RhovasAst.Expr.Literal.Atom(tokens[-1]!!.literal))
             match("[") -> {
