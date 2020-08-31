@@ -1,5 +1,9 @@
 func print(obj: Object) {}
 
+func write(obj: Object) {}
+
+func input(message: String) {}
+
 func range(lower: Integer, upper: Integer) {}
 
 func range(lower: Integer, upper: Integer, incl: Boolean) {}

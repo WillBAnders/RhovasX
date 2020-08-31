@@ -1,8 +1,9 @@
 class Map<K, V>: Equatable {
+
+    val size: Integer;
     val keys: List<K>;
     val values: List<V>;
     val entries: List<List>;
-    val size: Integer;
 
     func map(lambda: Lambda): Map {}
 

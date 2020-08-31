@@ -1,10 +1,10 @@
 class Character: Comparable {
 
-    func op+ concat(other: String): Decimal {}
+    val codepoint: Integer;
 
-    func op<=> compare(other: Decimal): Atom {}
+    func op== equals(other: Character): Boolean {}
 
-    func hashCode(): Integer {}
+    func op<=> compare(other: Character): Atom {}
 
     func toString(): String {}
 

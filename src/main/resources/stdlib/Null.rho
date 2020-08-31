@@ -2,4 +2,6 @@ class Null: Equatable {
 
     func op== equals(other: Null): Boolean {}
 
+    func toString(): String {}
+
 }

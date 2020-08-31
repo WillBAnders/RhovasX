@@ -21,14 +21,10 @@ object Stdlib {
     }
 
     private fun getOrInit(env: Environment, name: String): Environment.Type {
-<<<<<<< HEAD
-        return env.types[name] ?: env.defType(name) { init(env, it) }.let { env.types[name]!! }
-=======
         if (!env.scope.types.containsKey(name)) {
             env.defType(name) { init(env, it) }
         }
         return env.reqType(name)
->>>>>>> 3624a07fdac94fad4f3101b765f0a7792a5be7c2
     }
 
     private fun init(env: Environment, type: Environment.Type) {

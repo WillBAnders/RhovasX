@@ -8,6 +8,8 @@ class Decimal: Comparable {
 
     func op/ div(other: Decimal): Decimal {}
 
+    func op== equals(other: Decimal): Boolean {}
+
     func op<=> compare(other: Decimal): Atom {}
 
     func toString(): String {}

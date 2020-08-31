@@ -12,6 +12,8 @@ class Integer: Comparable {
 
     func rem(other: Integer): Integer {}
 
+    func op== equals(other: Integer): Boolean {}
+
     func op<=> compare(other: Integer): Atom {}
 
     func toString(): String {}

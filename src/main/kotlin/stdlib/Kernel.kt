@@ -7,6 +7,14 @@ fun defKernel(env: Environment, type: Environment.Type) {
         println(args[0].reqMthd("toString", 0).invoke(listOf(args[0])).value)
         env.init("Null", null)
     }
+    type.defFunc("write", 1) { args ->
+        print(args[0].reqMthd("toString", 0).invoke(listOf(args[0])).value)
+        env.init("Null", null)
+    }
+    type.defFunc("input", 1) { args ->
+        print(args[0].reqMthd("toString", 0).invoke(listOf(args[0])).value)
+        env.init("String", readLine()!!)
+    }
     type.defFunc("range", 2) { args ->
         type.reqFunc("range",3).invoke(args + listOf(env.init("Boolean", false)))
     }
@@ -16,6 +24,6 @@ fun defKernel(env: Environment, type: Environment.Type) {
         } else {
             (args[0].value as Int).until(args[1].value as Int)
         }
-        env.init("List", range.map { env.init("Integer", it) })
+        env.init("List", range.map { env.init("Integer", it) }.toList())
     }
 }

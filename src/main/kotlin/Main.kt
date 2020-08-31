@@ -14,13 +14,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import kotlin.system.exitProcess
 
-<<<<<<< HEAD
 const val PATH = "src/main/resources"
 const val PACKAGE = "Main.rho"
-=======
-val ENV = Environment()
-const val PATH = "src/main/resources/maptest.rho"
->>>>>>> list
 
 fun main() {
     Stdlib.init(ENV)
