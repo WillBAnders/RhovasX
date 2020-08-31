@@ -342,7 +342,6 @@ object Interpreter : Visitor<Any?>() {
                 }
                 if (ast.params.isEmpty() && args.isNotEmpty()) {
                     val value = if (args.size == 1) args[0] else ENV.init("List", args)
-                    println(value.type.name + ": " + value.reqMthd("toString", 0).invoke(listOf(value)).value)
                     scope!!.vars["val"] = Environment.Variable("val", value)
                 }
                 try {

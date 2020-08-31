@@ -25,7 +25,7 @@ class Define(types: Map<String, Environment.Type>): RhovasAst.Visitor<Unit>() {
     override fun visit(ast: RhovasAst.Mbr.Cmpt.Class) {
         val t = type
         val s = static
-        type = types[ast.type.name]!!
+        type = types[ast.type.name] ?: types[""]!!
         static = false
         ast.extends.forEach {
             type.extds[it.name] = types[it.name] ?: throw Exception("Undefined type ${it.name} (missing import?).")
@@ -77,7 +77,6 @@ class Define(types: Map<String, Environment.Type>): RhovasAst.Visitor<Unit>() {
             val type = this.type
             type.defFunc("", ast.params.size) { args ->
                 Interpreter.eval(Scope(type.scope)) {
-                    println(type.vars)
                     val obj = Environment.Object(type, scope)
                     scope!!.vars["this"] = Environment.Variable("this", obj)
                     type.flds.values.forEach {

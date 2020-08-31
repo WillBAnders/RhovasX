@@ -632,6 +632,10 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             match(RhovasTokenType.DECIMAL) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal.toDouble())
             match(RhovasTokenType.CHARACTER) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal[1])
             match(RhovasTokenType.STRING) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal.removeSurrounding("\""))
+            match(".") -> {
+                val name = parseIdentifier { "Context access requires an identifier, as in `.name`." }
+                RhovasAst.Expr.Access(RhovasAst.Expr.Access(null, "this"), name)
+            }
             match(":", RhovasTokenType.IDENTIFIER) -> RhovasAst.Expr.Literal(RhovasAst.Expr.Literal.Atom(tokens[-1]!!.literal))
             match("[") -> {
                 val list = mutableListOf<RhovasAst.Expr>()
