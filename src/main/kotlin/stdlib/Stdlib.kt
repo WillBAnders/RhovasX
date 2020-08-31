@@ -17,11 +17,12 @@ object Stdlib {
             getOrInit(env, root.relativize(it).toString().replace(".rho", "").replace("/", "."))
         }
         env.defType("Lambda") {}
+        env.scope.funcs.putAll(env.reqType("Kernel").funcs)
     }
 
     private fun getOrInit(env: Environment, name: String): Environment.Type {
-        return env.types.computeIfAbsent(name) {
-            env.defType(name) { init(env, it) }.let { env.types[name]!! }
+        return env.scope.types.computeIfAbsent(name) {
+            env.defType(name) { init(env, it) }.let { env.reqType(name) }
         }
     }
 

@@ -1,22 +1,24 @@
 package dev.willbanders.rhovas.x.interpreter
 
-class Environment {
+val ENV = Environment
 
-    val types: MutableMap<String, Type> = mutableMapOf()
+object Environment {
+
+    val scope = Scope(null)
 
     fun reqType(name: String): Type {
-        return types[name] ?: throw Exception("Undefined type $name.")
+        return scope.types[name] ?: throw Exception("Undefined type $name.")
     }
 
-    fun defType(name: String, builder: (Type) -> Unit) {
-        types[name] = Type(name).also(builder)
+    fun defType(name: String, scope: Scope = Scope(this.scope), builder: (Type) -> Unit) {
+        this.scope.types[name] = Type(name, scope).also(builder)
     }
 
     fun init(name: String, value: Any?): Object {
         return Object(reqType(name), value)
     }
 
-    class Type(val name: String) {
+    class Type(val name: String, val scope: Scope) {
 
         val extds: MutableMap<String, Type> = mutableMapOf()
         val vars: MutableMap<String, Variable> = mutableMapOf()
@@ -57,12 +59,12 @@ class Environment {
             return getMthd(name, arity) ?: throw Exception("Undefined method ${this.name}.$name/$arity.")
         }
 
-        fun defVar(name: String, value: Any?) {
-            vars[name] = Variable(name, Object(this, value))
+        fun defVar(name: String, value: Object) {
+            vars[name] = Variable(name, value)
         }
 
-        fun defFld(name: String, value: Any?) {
-            flds[name] = Variable(name, Object(this, value))
+        fun defFld(name: String, value: Object) {
+            flds[name] = Variable(name, value)
         }
 
         fun defProp(name: String, get: (List<Object>) -> Object, set: (List<Object>) -> Unit) {

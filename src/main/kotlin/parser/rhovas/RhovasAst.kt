@@ -327,91 +327,177 @@ sealed class RhovasAst {
             }
         }
 
-        protected abstract fun visit(ast: Source): T
+        protected open fun visit(ast: Source): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Import): T
+        protected open fun visit(ast: Import): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Type): T
+        protected open fun visit(ast: Type): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Parameter): T
+        protected open fun visit(ast: Parameter): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Modifiers): T
+        protected open fun visit(ast: Modifiers): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Cmpt.Class): T
+        protected open fun visit(ast: Mbr.Cmpt.Class): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Cmpt.Interface): T
+        protected open fun visit(ast: Mbr.Cmpt.Interface): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Property): T
+        protected open fun visit(ast: Mbr.Property): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Constructor): T
+        protected open fun visit(ast: Mbr.Constructor): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Function): T
+        protected open fun visit(ast: Mbr.Function): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Expression): T
+        protected open fun visit(ast: Stmt.Expression): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Block): T
+        protected open fun visit(ast: Stmt.Block): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Label): T
+        protected open fun visit(ast: Stmt.Label): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Declaration): T
+        protected open fun visit(ast: Stmt.Declaration): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Assignment): T
+        protected open fun visit(ast: Stmt.Assignment): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.If): T
+        protected open fun visit(ast: Stmt.If): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Match): T
+        protected open fun visit(ast: Stmt.Match): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Match.Case): T
+        protected open fun visit(ast: Stmt.Match.Case): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Match.Pattern.Expression): T
+        protected open fun visit(ast: Stmt.Match.Pattern.Expression): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Match.Pattern.Variable): T
+        protected open fun visit(ast: Stmt.Match.Pattern.Variable): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Match.Pattern.List): T
+        protected open fun visit(ast: Stmt.Match.Pattern.List): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Match.Pattern.Map): T
+        protected open fun visit(ast: Stmt.Match.Pattern.Map): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Match.Pattern.Else): T
+        protected open fun visit(ast: Stmt.Match.Pattern.Else): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.For): T
+        protected open fun visit(ast: Stmt.For): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.While): T
+        protected open fun visit(ast: Stmt.While): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Try): T
+        protected open fun visit(ast: Stmt.Try): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.With): T
+        protected open fun visit(ast: Stmt.With): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Break): T
+        protected open fun visit(ast: Stmt.Break): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Continue): T
+        protected open fun visit(ast: Stmt.Continue): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Throw): T
+        protected open fun visit(ast: Stmt.Throw): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Return): T
+        protected open fun visit(ast: Stmt.Return): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Assert): T
+        protected open fun visit(ast: Stmt.Assert): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Require): T
+        protected open fun visit(ast: Stmt.Require): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Ensure): T
+        protected open fun visit(ast: Stmt.Ensure): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Literal): T
+        protected open fun visit(ast: Expr.Literal): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Group): T
+        protected open fun visit(ast: Expr.Group): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Unary): T
+        protected open fun visit(ast: Expr.Unary): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Binary): T
+        protected open fun visit(ast: Expr.Binary): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Access): T
+        protected open fun visit(ast: Expr.Access): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Index): T
+        protected open fun visit(ast: Expr.Index): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Function): T
+        protected open fun visit(ast: Expr.Function): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Lambda): T
+        protected open fun visit(ast: Expr.Lambda): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Dsl): T
+        protected open fun visit(ast: Expr.Dsl): T {
+            TODO()
+        }
 
     }
 
