@@ -9,7 +9,7 @@ fun defList(env: Environment, type: Environment.Type) {
     )
     type.defMthd("[]", 1) { it[0].reqMthd("get", 1).invoke(it) }
     type.defMthd("get", 1) { args ->
-        env.init("List", (args[0].value as List<Environment.Object>)[(args[1].value as Int)])
+        (args[0].value as List<Environment.Object>)[(args[1].value as Int)]
     }
     type.defMthd("[]=", 2) { it[0].reqMthd("set", 2).invoke(it) }
     type.defMthd("set", 2) { args ->

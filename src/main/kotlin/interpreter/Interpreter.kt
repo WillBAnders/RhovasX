@@ -75,7 +75,13 @@ object Interpreter : Visitor<Any?>() {
             }
             else -> TODO("Semantics for match with multiple arguments.")
         }
-        visit(case.stmt)
+        scoped(Scope(scope)) {
+            if (args.isNotEmpty()) {
+                val value = if (args.size == 1) args[0] else ENV.init("List", args)
+                scope!!.vars["match"] = Environment.Variable("match", ENV.init("KeywordVariable", value))
+            }
+            visit(case.stmt)
+        }
         this.match = match
     }
 
@@ -135,7 +141,11 @@ object Interpreter : Visitor<Any?>() {
         for (value in (visit(ast.expr) as Environment.Object).value as Iterable<Environment.Object>) {
             try {
                 scoped(Scope(scope)) {
-                    scope!!.vars[ast.name] = Environment.Variable(ast.name, value)
+                    if (ast.name != null) {
+                        scope!!.vars[ast.name] = Environment.Variable(ast.name, value)
+                    } else {
+                        scope!!.vars["for"] = Environment.Variable("for", ENV.init("KeywordVariable", value))
+                    }
                     visit(ast.body)
                 }
             } catch (e: Break) {
@@ -198,7 +208,11 @@ object Interpreter : Visitor<Any?>() {
         val expr = visit(ast.expr) as Environment.Object
         try {
             scoped(Scope(scope)) {
-                scope!!.vars[ast.name] = Environment.Variable(ast.name, expr)
+                if (ast.name != null) {
+                    scope!!.vars[ast.name] = Environment.Variable(ast.name, expr)
+                } else {
+                    scope!!.vars["for"] = Environment.Variable("for", ENV.init("KeywordVariable", expr))
+                }
                 visit(ast.body)
             }
         } finally {
@@ -325,6 +339,11 @@ object Interpreter : Visitor<Any?>() {
             scoped(Scope(closure)) {
                 ast.params.withIndex().forEach {
                     scope!!.vars[it.value] = Environment.Variable(it.value, args[it.index])
+                }
+                if (ast.params.isEmpty() && args.isNotEmpty()) {
+                    val value = if (args.size == 1) args[0] else ENV.init("List", args)
+                    println(value.type.name + ": " + value.reqMthd("toString", 0).invoke(listOf(value)).value)
+                    scope!!.vars["val"] = Environment.Variable("val", value)
                 }
                 try {
                     visit(ast.body)

@@ -163,7 +163,7 @@ sealed class RhovasAst {
         }
 
         data class For(
-            val name: String,
+            val name: String?,
             val expr: Expr,
             val body: Stmt,
         ) : Stmt()
@@ -188,7 +188,7 @@ sealed class RhovasAst {
         }
 
         data class With(
-            val name: String,
+            val name: String?,
             val expr: Expr,
             val body: Stmt,
         ) : Stmt()

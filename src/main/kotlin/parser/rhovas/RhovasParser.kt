@@ -217,22 +217,22 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "Expected statement.",
             "The parser reached the end of the input, but expected to parse a statement such as `if`, `for`, or `return`."
         )}
-        return when (tokens[0]!!.literal) {
-            "{" -> parseBlockStmt()
-            "var", "val" -> parseDeclarationStmt()
-            "if" -> parseIfStmt()
-            "match" -> parseMatchStmt()
-            "for" -> parseForStmt()
-            "while" -> parseWhileStmt()
-            "try" -> parseTryStmt()
-            "with" -> parseWithStmt()
-            "break" -> parseBreakStmt()
-            "continue" -> parseContinueStmt()
-            "throw" -> parseThrowStmt()
-            "return" -> parseReturnStmt()
-            "assert" -> parseAssertStmt()
-            "require" -> parseRequireStmt()
-            "ensure" -> parseEnsureStmt()
+        return when {
+            peek("{") -> parseBlockStmt()
+            peek(listOf("var", "val")) && tokens[1]?.literal !in listOf(".", "[") -> parseDeclarationStmt()
+            peek("if") -> parseIfStmt()
+            peek("match") -> parseMatchStmt()
+            peek("for") && tokens[1]?.literal != "." -> parseForStmt()
+            peek("while") -> parseWhileStmt()
+            peek("try") -> parseTryStmt()
+            peek("with") && tokens[1]?.literal != "." -> parseWithStmt()
+            peek("break") -> parseBreakStmt()
+            peek("continue") -> parseContinueStmt()
+            peek("throw") -> parseThrowStmt()
+            peek("return") -> parseReturnStmt()
+            peek("assert") -> parseAssertStmt()
+            peek("require") -> parseRequireStmt()
+            peek("ensure") -> parseEnsureStmt()
             else -> {
                 context.push(tokens[0]!!.range)
                 val stmt = if (match(RhovasTokenType.IDENTIFIER, ":")) {
@@ -400,11 +400,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "Expected opening parenthesis.",
             "The variable of a for statement must be surrounded by parentheses `()`, as in `for (elem in list) { ... }`."
         )}
-        val name = parseIdentifier { "The variable of a for statement requires a name, as in `for (elem in list) { ... }`." }
-        require(match("in")) { error(
-            "Expected literal `in`.",
-            "The variable of a for statement must be followed by `in`, as in `for (elem in list) { ... }`."
-        )}
+        val name = if (match(RhovasTokenType.IDENTIFIER, "in")) tokens[-2]!!.literal else null
         val expr = parseExpr()
         require(match(")")) { error(
             "Expected closing parenthesis.",
@@ -475,11 +471,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             "Expected opening parenthesis.",
             "The variable of a with statement must be surrounded by parentheses `()`, as in `with (name = expr) { ... }`."
         )}
-        val name = parseIdentifier { "The variable of a with statement requires a name, as in `with (name = expr) { ... }`." }
-        require(match("=")) { error(
-            "Expected equal sign.",
-            "The variable of a with statement must be followed by an equal sign `=`, as in `with (name = expr) { ... }`."
-        )}
+        val name = if (match(RhovasTokenType.IDENTIFIER, "=")) tokens[-2]!!.literal else null
         val expr = parseExpr()
         require(match(")")) { error(
             "Expected closing parenthesis.",
@@ -706,7 +698,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
         }
         if (match("{")) {
             val params = mutableListOf<String>()
-            if (peek(RhovasTokenType.IDENTIFIER)) {
+            if (peek(RhovasTokenType.IDENTIFIER, "-", ">") || peek(RhovasTokenType.IDENTIFIER, ",")) {
                 do {
                     require(match(RhovasTokenType.IDENTIFIER))
                     params.add(tokens[-1]!!.literal)

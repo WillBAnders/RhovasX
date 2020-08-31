@@ -17,6 +17,12 @@ object Stdlib {
             getOrInit(env, root.relativize(it).toString().replace(".rho", "").replace("/", "."))
         }
         env.defType("Lambda") {}
+        env.defType("KeywordVariable") { type ->
+            type.defProp("val",
+                { it[0].value as Environment.Object },
+                { throw Exception("val is read only.") },
+            )
+        }
         env.scope.funcs.putAll(env.reqType("Kernel").funcs)
     }
 
