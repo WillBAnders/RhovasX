@@ -27,6 +27,7 @@ fun defInteger(env: Environment, type: Environment.Type) {
     }
     type.defMthd("<=>", 1) { it[0].reqMthd("compare", 1).invoke(it) }
     type.defMthd("compare", 1) {
+        print(it.map{ Pair(it.type.name, it.value) })
         when ((it[0].value as Int).compareTo(it[1].value as Int)) {
             -1 -> env.init("Atom", "lt")
             1 -> env.init("Atom", "gt")

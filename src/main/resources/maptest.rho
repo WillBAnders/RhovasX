@@ -1,0 +1,17 @@
+func main(){
+    val m1: Map<String, Integer> = { };
+    val m2: Map<String, Integer> = { };
+    val m4: map<String, Integer> = { };
+
+    val keys = ["Im", "Blue", "Daba", "Dee", "Ba", "Da", "Die"];
+
+    var counter: Integer = 0;
+    for(key in keys){
+        m1[key] = counter;
+        m2[key] = counter;
+        m4[key] = counter + 3;
+    }
+
+    print(m1 == m2);
+    print(m1 == m4);
+}
