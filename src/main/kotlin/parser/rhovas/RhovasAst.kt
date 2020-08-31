@@ -15,29 +15,45 @@ sealed class RhovasAst {
     ) : RhovasAst()
 
     data class Type(
+        val mut: Mutability,
         val name: String,
         val generics: List<Type>,
-    ) : RhovasAst()
+    ) : RhovasAst() {
+
+        enum class Mutability { MUTABLE, IMMUTABLE, VIEWABLE }
+
+    }
 
     data class Parameter(
         val name: String,
         val type: Type,
     ) : RhovasAst()
 
+    data class Modifiers(
+        val visibility: Visibility?,
+        val virtual: Boolean,
+        val abstract: Boolean,
+        val override: Boolean,
+    ) : RhovasAst() {
+
+        enum class Visibility { PUBLIC, PACKAGE, PROTECTED, PRIVATE }
+
+    }
+
     sealed class Mbr : RhovasAst() {
 
         sealed class Cmpt : Mbr() {
 
             data class Class(
-                val name: String,
-                val generics: List<Type>,
+                val modifiers: Modifiers,
+                val type: Type,
                 val extends: List<Type>,
                 val mbrs: List<Mbr>,
             ) : Cmpt()
 
             data class Interface(
-                val name: String,
-                val generics: List<Type>,
+                val modifiers: Modifiers,
+                val type: Type,
                 val extends: List<Type>,
                 val mbrs: List<Mbr>,
             ) : Cmpt()
@@ -45,6 +61,7 @@ sealed class RhovasAst {
         }
 
         data class Property(
+            val modifiers: Modifiers,
             val mut: Boolean,
             val name: String,
             val type: Type?,
@@ -52,15 +69,23 @@ sealed class RhovasAst {
         ) : Mbr()
 
         data class Constructor(
+            val modifiers: Modifiers,
+            val ex: Boolean,
             val params: List<Parameter>,
+            val throws: List<Type>,
             val body: Stmt,
         ) : Mbr()
 
         data class Function(
+            val modifiers: Modifiers,
             val op: String?,
+            val mut: Boolean,
+            val pure: Boolean,
             val name: String,
+            val ex: Boolean,
             val params: List<Parameter>,
             val ret: Type?,
+            val throws: List<Type>,
             val body: Stmt,
         ) : Mbr()
 
@@ -101,8 +126,41 @@ sealed class RhovasAst {
 
         data class Match(
             val args: List<Expr>,
-            val cases: List<Pair<List<Expr>, Stmt>>,
-        ) : Stmt()
+            val cases: List<Case>,
+        ) : Stmt() {
+
+            data class Case(
+                val patterns: List<Pattern>,
+                val stmt: Stmt,
+            ) : RhovasAst()
+
+            sealed class Pattern : RhovasAst() {
+
+                data class Expression(
+                    val expr: Expr,
+                ) : Pattern()
+
+                data class Variable(
+                    val name: String?,
+                ) : Pattern()
+
+                data class List(
+                    val elmts: kotlin.collections.List<Pattern>,
+                    val rest: String?,
+                ) : Pattern()
+
+                data class Map(
+                    val elmts: kotlin.collections.Map<String, Pattern>,
+                    val rest: String?,
+                ) : Pattern()
+
+                data class Else(
+                    val pattern: Pattern?
+                ) : Pattern()
+
+            }
+
+        }
 
         data class For(
             val name: String,
@@ -129,6 +187,12 @@ sealed class RhovasAst {
 
         }
 
+        data class With(
+            val name: String,
+            val expr: Expr,
+            val body: Stmt,
+        ) : Stmt()
+
         data class Break(
             val label: String?,
         ) : Stmt()
@@ -143,6 +207,18 @@ sealed class RhovasAst {
 
         data class Return(
             val value: Expr?,
+        ) : Stmt()
+
+        data class Assert(
+            val cond: Expr,
+        ) : Stmt()
+
+        data class Require(
+            val cond: Expr,
+        ) : Stmt()
+
+        data class Ensure(
+            val cond: Expr,
         ) : Stmt()
 
     }
@@ -185,6 +261,7 @@ sealed class RhovasAst {
         data class Function(
             val rec: Expr?,
             val name: String,
+            val ex: Boolean,
             val args: List<Expr>,
         ) : Expr()
 
@@ -208,6 +285,7 @@ sealed class RhovasAst {
                 is Import -> visit(ast)
                 is Type -> visit(ast)
                 is Parameter -> visit(ast)
+                is Modifiers -> visit(ast)
                 is Mbr.Cmpt.Class -> visit(ast)
                 is Mbr.Cmpt.Interface -> visit(ast)
                 is Mbr.Property -> visit(ast)
@@ -220,13 +298,23 @@ sealed class RhovasAst {
                 is Stmt.Assignment -> visit(ast)
                 is Stmt.If -> visit(ast)
                 is Stmt.Match -> visit(ast)
+                is Stmt.Match.Case -> visit(ast)
+                is Stmt.Match.Pattern.Expression -> visit(ast)
+                is Stmt.Match.Pattern.Variable -> visit(ast)
+                is Stmt.Match.Pattern.List -> visit(ast)
+                is Stmt.Match.Pattern.Map -> visit(ast)
+                is Stmt.Match.Pattern.Else -> visit(ast)
                 is Stmt.For -> visit(ast)
                 is Stmt.While -> visit(ast)
                 is Stmt.Try -> visit(ast)
+                is Stmt.With -> visit(ast)
                 is Stmt.Break -> visit(ast)
                 is Stmt.Continue -> visit(ast)
                 is Stmt.Throw -> visit(ast)
                 is Stmt.Return -> visit(ast)
+                is Stmt.Assert -> visit(ast)
+                is Stmt.Require -> visit(ast)
+                is Stmt.Ensure -> visit(ast)
                 is Expr.Literal -> visit(ast)
                 is Expr.Group -> visit(ast)
                 is Expr.Unary -> visit(ast)
@@ -239,69 +327,177 @@ sealed class RhovasAst {
             }
         }
 
-        protected abstract fun visit(ast: Source): T
+        protected open fun visit(ast: Source): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Import): T
+        protected open fun visit(ast: Import): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Type): T
+        protected open fun visit(ast: Type): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Parameter): T
+        protected open fun visit(ast: Parameter): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Cmpt.Class): T
+        protected open fun visit(ast: Modifiers): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Cmpt.Interface): T
+        protected open fun visit(ast: Mbr.Cmpt.Class): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Property): T
+        protected open fun visit(ast: Mbr.Cmpt.Interface): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Constructor): T
+        protected open fun visit(ast: Mbr.Property): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Mbr.Function): T
+        protected open fun visit(ast: Mbr.Constructor): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Expression): T
+        protected open fun visit(ast: Mbr.Function): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Block): T
+        protected open fun visit(ast: Stmt.Expression): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Label): T
+        protected open fun visit(ast: Stmt.Block): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Declaration): T
+        protected open fun visit(ast: Stmt.Label): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Assignment): T
+        protected open fun visit(ast: Stmt.Declaration): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.If): T
+        protected open fun visit(ast: Stmt.Assignment): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Match): T
+        protected open fun visit(ast: Stmt.If): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.For): T
+        protected open fun visit(ast: Stmt.Match): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.While): T
+        protected open fun visit(ast: Stmt.Match.Case): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Try): T
+        protected open fun visit(ast: Stmt.Match.Pattern.Expression): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Break): T
+        protected open fun visit(ast: Stmt.Match.Pattern.Variable): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Continue): T
+        protected open fun visit(ast: Stmt.Match.Pattern.List): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Throw): T
+        protected open fun visit(ast: Stmt.Match.Pattern.Map): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Stmt.Return): T
+        protected open fun visit(ast: Stmt.Match.Pattern.Else): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Literal): T
+        protected open fun visit(ast: Stmt.For): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Group): T
+        protected open fun visit(ast: Stmt.While): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Unary): T
+        protected open fun visit(ast: Stmt.Try): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Binary): T
+        protected open fun visit(ast: Stmt.With): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Access): T
+        protected open fun visit(ast: Stmt.Break): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Index): T
+        protected open fun visit(ast: Stmt.Continue): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Function): T
+        protected open fun visit(ast: Stmt.Throw): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Lambda): T
+        protected open fun visit(ast: Stmt.Return): T {
+            TODO()
+        }
 
-        protected abstract fun visit(ast: Expr.Dsl): T
+        protected open fun visit(ast: Stmt.Assert): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Stmt.Require): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Stmt.Ensure): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Literal): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Group): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Unary): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Binary): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Access): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Index): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Function): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Lambda): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Expr.Dsl): T {
+            TODO()
+        }
 
     }
 

@@ -2,130 +2,11 @@ package dev.willbanders.rhovas.x.interpreter
 
 import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst.*
 
-class Interpreter(private val env: Environment) : Visitor<Any?>() {
+object Interpreter : Visitor<Any?>() {
 
-    var scope = Scope(null).also { it.funcs.putAll(env.reqType("Kernel").funcs) }
-    private var type: Environment.Type? = null
+    var scope: Scope? = null
     private var label: String? = null
-
-    override fun visit(ast: Source) {
-        ast.impts.forEach { visit(it) }
-        ast.mbrs.forEach { visit(it) }
-        ast.mbrs.filterIsInstance<Mbr.Property>().forEach { prop ->
-            scope.reqVar(prop.name).value = prop.value?.let { visit(it) } as Environment.Object
-        }
-        val main = ast.mbrs.find {it is Mbr.Function && it.name == "main" }
-        if (main != null) {
-            try {
-                visit((main as Mbr.Function).body)
-            } catch (e: Throw) {
-                println("Uncaught exception: " + e.value.reqMthd("toString", 0).invoke(listOf(e.value)).value)
-            }
-        }
-    }
-
-    override fun visit(ast: Import) {
-        TODO()
-    }
-
-    override fun visit(ast: Type): Any? {
-        TODO()
-    }
-
-    override fun visit(ast: Parameter): Any? {
-        TODO()
-    }
-
-    override fun visit(ast: Mbr.Cmpt.Class) {
-        env.defType(ast.name) { t ->
-            val current = type
-            type = t
-            ast.mbrs.forEach { visit(it) }
-            ast.mbrs.filterIsInstance<Mbr.Property>().forEach { prop ->
-                //TODO: Move to constructor
-                t.flds[prop.name]!!.value = prop.value
-                    ?.let { visit(it) as Environment.Object }
-                    ?: env.init("Null", null)
-            }
-            type = current
-        }
-    }
-
-    override fun visit(ast: Mbr.Cmpt.Interface) {
-        TODO()
-    }
-
-    override fun visit(ast: Mbr.Property) {
-        val value = env.init("Null", null)
-        if (type != null) {
-            type!!.flds[ast.name] = Environment.Variable(ast.name, value)
-            type!!.props[ast.name] = Environment.Property(ast.name,
-                { (it[0].value as Scope).reqVar(ast.name).value },
-                { (it[0].value as Scope).reqVar(ast.name).value = it[1] }
-            )
-        } else {
-            scope.vars[ast.name] = Environment.Variable(ast.name, value)
-        }
-    }
-
-    override fun visit(ast: Mbr.Constructor) {
-        val type = this.type!!
-        val closure = scope
-        val func = Environment.Function(type.name, ast.params.size) { args ->
-            scoped(Scope(closure)) {
-                val obj = Environment.Object(type, scope)
-                scope.vars["this"] = Environment.Variable("this", obj)
-                type.flds.values.forEach {
-                    scope.vars[it.name] = Environment.Variable(it.name, it.value)
-                }
-                scoped(Scope(scope)) {
-                    ast.params.withIndex().forEach {
-                        scope.vars[it.value.name] = Environment.Variable(it.value.name, args[it.index])
-                    }
-                    try {
-                        visit(ast.body)
-                    } catch (ignored: Return) {}
-                }
-                obj
-            }
-        }
-        scope.funcs[Pair(func.name, func.arity)] = func
-    }
-
-    override fun visit(ast: Mbr.Function) {
-        if (type != null) {
-            type!!.mthds[Pair(ast.name, ast.params.size)] = Environment.Function(ast.name, ast.params.size) { args ->
-                val instance = args[0]
-                scoped(Scope(instance.value as Scope)) {
-                    ast.params.withIndex().forEach {
-                        scope.vars[it.value.name] = Environment.Variable(it.value.name, args[it.index + 1])
-                    }
-                    try {
-                        visit(ast.body)
-                        env.init("Null", null)
-                    } catch (e: Return) {
-                        e.value ?: env.init("Null", null)
-                    }
-                }
-            }
-        } else {
-            val closure = scope
-            val func = Environment.Function(ast.name, ast.params.size) { args ->
-                scoped(Scope(closure)) {
-                    ast.params.withIndex().forEach {
-                        scope.vars[it.value.name] = Environment.Variable(it.value.name, args[it.index])
-                    }
-                    try {
-                        visit(ast.body)
-                        env.init("Null", null)
-                    } catch (e: Return) {
-                        e.value ?: env.init("Null", null)
-                    }
-                }
-            }
-            scope.funcs[Pair(func.name, func.arity)] = func
-        }
-    }
+    private var match: Environment.Object? = null
 
     override fun visit(ast: Stmt.Expression) {
         visit(ast.expr)
@@ -148,15 +29,15 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     }
 
     override fun visit(ast: Stmt.Declaration) {
-        scope.vars[ast.name] = Environment.Variable(ast.name, ast.value
+        scope!!.vars[ast.name] = Environment.Variable(ast.name, ast.value
             ?.let { visit(it) as Environment.Object }
-            ?: env.init("Null", null))
+            ?: ENV.init("Null", null))
     }
 
     override fun visit(ast: Stmt.Assignment) {
         if (ast.rec is Expr.Access) {
             if (ast.rec.rec == null) {
-                val variable = scope.reqVar(ast.rec.name)
+                val variable = scope!!.reqVar(ast.rec.name)
                 variable.value = visit(ast.value) as Environment.Object
             } else {
                 val rec = visit(ast.rec.rec) as Environment.Object
@@ -183,19 +64,69 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
     }
 
     override fun visit(ast: Stmt.Match) {
-        val args = ast.args.map { visit(it) }
+        val match = this.match
+        val args = ast.args.map { visit(it) as Environment.Object }
         val case = when (args.size) {
-            0 -> ast.cases.firstOrNull { c ->
-                c.first.any { it is Expr.Access && it.rec == null && it.name == "else" || (visit(it) as Environment.Object).value == true }
-            } ?: return
-            1 -> ast.cases.firstOrNull { c ->
-                val arg = visit(ast.args[0]) as Environment.Object
-                val method = arg.reqMthd("==", 1)
-                c.first.any { it is Expr.Access && it.rec == null && it.name == "else" || method.invoke(listOf(arg, visit(it) as Environment.Object)).value == true }
-            } ?: throw Exception("Structural match must cover all cases or have an `else` case (missed ${args[0]})")
+            0 -> ast.cases.firstOrNull { it.patterns.any { (visit((it as Stmt.Match.Pattern.Expression).expr) as Environment.Object).value as Boolean } } ?: return
+            1 -> {
+                this.match = args[0]
+                ast.cases.firstOrNull { it.patterns.any { visit(it) as Boolean } }
+                    ?: throw Exception("Structural match must cover all cases or have an `else` case (missed ${args[0].reqMthd("toString", 0).invoke(listOf(args[0])).value})")
+            }
             else -> TODO("Semantics for match with multiple arguments.")
         }
-        visit(case.second)
+        visit(case.stmt)
+        this.match = match
+    }
+
+    override fun visit(ast: Stmt.Match.Case): Boolean {
+        return ast.patterns.any { visit(it) as Boolean }
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.Expression): Boolean {
+        return match!!.reqMthd("==", 1).invoke(listOf(match!!, visit(ast.expr) as Environment.Object)).value == true
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.Variable) : Boolean {
+        ast.name?.let { scope!!.vars[it] = Environment.Variable(it, match!!) }
+        return true
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.List): Boolean {
+        val match = this.match
+        val list = match?.value as? List<Environment.Object> ?: return false
+        if (list.size < ast.elmts.size || list.size > ast.elmts.size && ast.rest == null) return false
+        val res = ast.elmts.withIndex().all { pattern ->
+            list.getOrNull(pattern.index)?.let {
+                this.match = it
+                visit(pattern.value) as Boolean
+            } == true
+        }
+        if (res && ast.rest != null) {
+            scope!!.vars[ast.rest] = Environment.Variable(ast.rest, ENV.init("List", list.subList(ast.elmts.size, list.size)))
+        }
+        this.match = match
+        return res
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.Map): Boolean {
+        val match = this.match!!
+        if (!(match.type.flds.keys - ast.elmts.keys).isEmpty() && ast.rest == null) return false
+        val res = ast.elmts.all { pattern ->
+            match.type.getFld(pattern.key)?.let {
+                this.match = it.value
+                visit(pattern.value) as Boolean
+            } == true
+        }
+        if (res && ast.rest != null) {
+            scope!!.vars[ast.rest] = Environment.Variable(ast.rest, ENV.init("Map", (match.type.flds.keys - ast.elmts.keys).map { Pair(it, match.reqProp(it)) }.toMap()))
+        }
+        this.match = match
+        return res
+    }
+
+    override fun visit(ast: Stmt.Match.Pattern.Else): Any? {
+        return ast.pattern?.let { visit(it) as Boolean } ?: true
     }
 
     override fun visit(ast: Stmt.For) {
@@ -204,7 +135,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         for (value in (visit(ast.expr) as Environment.Object).value as Iterable<Environment.Object>) {
             try {
                 scoped(Scope(scope)) {
-                    scope.vars[ast.name] = Environment.Variable(ast.name, value)
+                    scope!!.vars[ast.name] = Environment.Variable(ast.name, value)
                     visit(ast.body)
                 }
             } catch (e: Break) {
@@ -252,14 +183,26 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             visit(ast.body)
         } catch (e: Throw) {
             val catch = ast.catches.find {
-                e.value.type.isSubtypeOf(env.reqType(it.type.name))
+                e.value.type.isSubtypeOf(scope!!.reqType(it.type.name))
             } ?: throw e
             scoped(Scope(scope)) {
-                scope.vars[catch.name] = Environment.Variable(catch.name, e.value)
+                scope!!.vars[catch.name] = Environment.Variable(catch.name, e.value)
                 visit(catch.body)
             }
         } finally {
             ast.finally?.let { visit(it) }
+        }
+    }
+
+    override fun visit(ast: Stmt.With) {
+        val expr = visit(ast.expr) as Environment.Object
+        try {
+            scoped(Scope(scope)) {
+                scope!!.vars[ast.name] = Environment.Variable(ast.name, expr)
+                visit(ast.body)
+            }
+        } finally {
+            //TODO autocloseable
         }
     }
 
@@ -279,17 +222,35 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         throw Return(ast.value?.let { visit(it) as Environment.Object })
     }
 
+    override fun visit(ast: Stmt.Assert) {
+        if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
+            throw Exception("Assert failure: " + ast.cond)
+        }
+    }
+
+    override fun visit(ast: Stmt.Require) {
+        if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
+            throw Exception("Require failure: " + ast.cond)
+        }
+    }
+
+    override fun visit(ast: Stmt.Ensure) {
+        if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
+            throw Exception("Ensure failure: " + ast.cond)
+        }
+    }
+
     override fun visit(ast: Expr.Literal): Environment.Object {
         return when(ast.literal) {
-            null -> env.init("Null", null)
-            is Boolean -> env.init("Boolean", ast.literal)
-            is Int -> env.init("Integer", ast.literal)
-            is Double -> env.init("Decimal", ast.literal)
-            is Char -> env.init("Character", ast.literal)
-            is String -> env.init("String", ast.literal)
-            is Expr.Literal.Atom -> env.init("Atom", ast.literal.name)
-            is List<*> -> env.init("List", (ast.literal as List<Expr>).map { visit(it) })
-            is Map<*, *> -> env.init("Map", (ast.literal as Map<String, Expr>).mapValues { visit(it.value) })
+            null -> ENV.init("Null", null)
+            is Boolean -> ENV.init("Boolean", ast.literal)
+            is Int -> ENV.init("Integer", ast.literal)
+            is Double -> ENV.init("Decimal", ast.literal)
+            is Char -> ENV.init("Character", ast.literal)
+            is String -> ENV.init("String", ast.literal)
+            is Expr.Literal.Atom -> ENV.init("Atom", ast.literal.name)
+            is List<*> -> ENV.init("List", (ast.literal as List<Expr>).map { visit(it) })
+            is Map<*, *> -> ENV.init("Map", (ast.literal as Map<String, Expr>).mapValues { visit(it.value) })
             else -> throw AssertionError()
         }
     }
@@ -310,11 +271,11 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             "&&", "||" -> {
                 val l = left.value as Boolean
                 val r = { right().value as Boolean }
-                env.init("Boolean", if (ast.op == "&&") l && r() else l || r())
+                ENV.init("Boolean", if (ast.op == "&&") l && r() else l || r())
             }
             "<", "<=", ">", ">=" -> {
                 val compare = left.reqMthd("compare", 1).invoke(listOf(left, right()))
-                env.init("Boolean", when (ast.op) {
+                ENV.init("Boolean", when (ast.op) {
                     "<" -> compare.value == "lt"
                     "<=" -> compare.value == "lt" || compare.value == "eq"
                     ">" -> compare.value == "gt"
@@ -324,12 +285,12 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
             }
             "==", "!=" -> {
                 val eq = left.reqMthd("==", 1).invoke(listOf(left, right())).value as Boolean
-                env.init("Boolean", if (ast.op == "==") eq else !eq)
+                ENV.init("Boolean", if (ast.op == "==") eq else !eq)
             }
             "===", "!==" -> {
                 val r = right()
                 val eq = left === r || left.type.name == r.type.name && left.value === r.value
-                env.init("Boolean", if (ast.op == "===") eq else !eq)
+                ENV.init("Boolean", if (ast.op == "===") eq else !eq)
             }
             else -> left.reqMthd(ast.op, 1).invoke(listOf(left, right()))
         }
@@ -337,7 +298,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
 
     override fun visit(ast: Expr.Access): Environment.Object {
         return if (ast.rec == null) {
-            scope.reqVar(ast.name).value
+            scope!!.reqVar(ast.name).value
         } else {
             val rec = visit(ast.rec) as Environment.Object
             rec.reqProp(ast.name).get(listOf(rec))
@@ -351,7 +312,7 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
 
     override fun visit(ast: Expr.Function): Environment.Object {
         return if (ast.rec == null) {
-            scope.reqFunc(ast.name, ast.args.size).invoke(ast.args.map { visit(it) as Environment.Object })
+            scope!!.reqFunc(ast.name, ast.args.size).invoke(ast.args.map { visit(it) as Environment.Object })
         } else {
             val rec = visit(ast.rec) as Environment.Object
             rec.reqMthd(ast.name, ast.args.size).invoke(listOf(rec) + ast.args.map { visit(it) as Environment.Object })
@@ -360,16 +321,16 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
 
     override fun visit(ast: Expr.Lambda): Environment.Object {
         val closure = scope
-        return env.init("Lambda", Environment.Function("invoke", 1) { args ->
+        return ENV.init("Lambda", Environment.Function("invoke", 1) { args ->
             scoped(Scope(closure)) {
                 ast.params.withIndex().forEach {
-                    scope.vars[it.value] = Environment.Variable(it.value, args[it.index])
+                    scope!!.vars[it.value] = Environment.Variable(it.value, args[it.index])
                 }
                 try {
                     visit(ast.body)
-                    env.init("Null", null)
+                    ENV.init("Null", null)
                 } catch (e: Return) {
-                    e.value ?: env.init("Null", null)
+                    e.value ?: ENV.init("Null", null)
                 }
             }
         })
@@ -379,13 +340,24 @@ class Interpreter(private val env: Environment) : Visitor<Any?>() {
         TODO()
     }
 
-    private fun <T> scoped(scope: Scope, block: () -> T): T {
+    fun <T> scoped(scope: Scope, block: () -> T): T {
         val current = this.scope
         this.scope = scope
         try {
             return block()
         } finally {
             this.scope = current
+        }
+    }
+
+    fun <T> eval(scope: Scope, block: Interpreter.() -> T): T {
+        val label = this.label
+        val match = this.match
+        try {
+            return scoped(scope) { block(this) }
+        } finally {
+            this.label = label
+            this.match = match
         }
     }
 
