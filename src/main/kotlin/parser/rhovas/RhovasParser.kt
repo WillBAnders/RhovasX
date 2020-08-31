@@ -597,8 +597,19 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             val token = tokens[0]
             expr = when {
                 match(".") -> {
-                    val name = parseIdentifier { "A field access or method call requires a name, as in `x.y` or `x.z()`." }
-                    if (peek(listOf("(", "{")) || peek("!", listOf("(", "{"))) parseFunctionExpr(expr, name) else RhovasAst.Expr.Access(expr, name)
+                    if (match("|")) {
+                        var name = parseIdentifier { "A pipeline function call requires a name, as in `x.|y()` or `x.|y.z()`." }
+                        var rec: RhovasAst.Expr? = null
+                        while (match(".")) {
+                            rec = RhovasAst.Expr.Access(rec, name)
+                            name = parseIdentifier { "A pipeline function call requires a name, as in `x.|y()` or `x.|y.z()`." }
+                        }
+                        val func = parseFunctionExpr(rec, name)
+                        func.copy(rec = null, args = listOf(expr) + func.args)
+                    } else {
+                        val name = parseIdentifier { "A field access or method call requires a name, as in `x.y` or `x.z()`." }
+                        if (peek(listOf("(", "{")) || peek("!", listOf("(", "{"))) parseFunctionExpr(expr, name) else RhovasAst.Expr.Access(expr, name)
+                    }
                 }
                 match("[") -> {
                     val args = mutableListOf<RhovasAst.Expr>()
