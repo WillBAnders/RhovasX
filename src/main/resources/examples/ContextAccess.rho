@@ -1,0 +1,20 @@
+func main() {
+    val person = Person("X");
+    print(person.name);
+    person.setName("Y");
+    print(person.name);
+}
+
+class Person {
+
+    val name: String;
+
+    ctor(name: String) {
+        .setName(name);
+    }
+
+    func setName(name: String) {
+        .name = name;
+    }
+
+}

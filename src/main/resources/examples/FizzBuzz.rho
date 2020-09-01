@@ -1,0 +1,10 @@
+func main() {
+    range(1, 15, :incl).iterate {
+        match ([val.mod(3), val.mod(5)]) {
+            [0, 0]: print("FizzBuzz");
+            [0, _]: print("Fizz");
+            [_, 0]: print("Buzz");
+            else: print(val);
+        }
+    };
+}

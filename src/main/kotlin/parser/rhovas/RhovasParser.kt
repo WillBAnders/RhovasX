@@ -238,7 +238,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
         return RhovasAst.Mbr.Function(modifiers, op, mut, pure, name, ex, params, ret, throws, body)
     }
 
-    private fun parseStatement(): RhovasAst.Stmt {
+    fun parseStatement(): RhovasAst.Stmt {
         require(tokens[0] != null) { error(
             "Expected statement.",
             "The parser reached the end of the input, but expected to parse a statement such as `if`, `for`, or `return`."
@@ -542,32 +542,38 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
 
     private fun parseAssertStmt(): RhovasAst.Stmt.Assert {
         require(match("assert"))
+        val start = tokens[0]?.range?.index ?: 0
         context.push(tokens[-1]!!.range)
         val expr = parseExpr()
         requireSemicolon { "An assert statement must be followed by a semicolon `;`, as in `assert expr;`." }
         context.pop()
-        return RhovasAst.Stmt.Assert(expr)
+        val end = tokens[-1]!!.range.index + 1
+        return RhovasAst.Stmt.Assert(expr, lexer.chars.input.substring(start, end))
     }
 
     private fun parseRequireStmt(): RhovasAst.Stmt.Require {
         require(match("require"))
+        val start = tokens[0]?.range?.index ?: 0
         context.push(tokens[-1]!!.range)
         val expr = parseExpr()
         requireSemicolon { "A require statement must be followed by a semicolon `;`, as in `require expr;`." }
         context.pop()
-        return RhovasAst.Stmt.Require(expr)
+        val end = tokens[-1]!!.range.index + 1
+        return RhovasAst.Stmt.Require(expr, lexer.chars.input.substring(start, end))
     }
 
     private fun parseEnsureStmt(): RhovasAst.Stmt.Ensure {
         require(match("ensure"))
+        val start = tokens[0]?.range?.index ?: 0
         context.push(tokens[-1]!!.range)
         val expr = parseExpr()
         requireSemicolon { "An ensure statement must be followed by a semicolon `;`, as in `ensure expr;`." }
         context.pop()
-        return RhovasAst.Stmt.Ensure(expr)
+        val end = tokens[-1]!!.range.index + 1
+        return RhovasAst.Stmt.Ensure(expr, lexer.chars.input.substring(start, end))
     }
 
-    private fun parseExpr(): RhovasAst.Expr {
+    fun parseExpr(): RhovasAst.Expr {
         return parseLogicalOrExpr()
     }
 

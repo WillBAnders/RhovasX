@@ -1,5 +1,7 @@
 class Integer: Comparable {
 
+    func op- negate(): Integer {}
+
     func op+ add(other: Integer): Integer {}
 
     func op- sub(other: Integer): Integer {}

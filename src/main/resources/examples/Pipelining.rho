@@ -1,0 +1,7 @@
+func main() {
+    range(0, 10).|filterOdds().|print();
+}
+
+func filterOdds(list: List<T>) {
+    return list.filter { return val.mod(2) == 1; };
+}

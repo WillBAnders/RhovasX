@@ -31,7 +31,7 @@ class Define(types: Map<String, Environment.Type>): RhovasAst.Visitor<Unit>() {
             type.extds[it.name] = types[it.name] ?: throw Exception("Undefined type ${it.name} (missing import?).")
         }
         ast.mbrs.forEach { visit(it) }
-        type.funcs.filter { it.key.first.isEmpty() }.forEach { t.scope.funcs[Pair(type.name, it.key.second)] = it.value }
+        type.funcs.filter { it.key.first.isEmpty() }.forEach { t.scope.funcs[Pair(ast.type.name, it.key.second)] = it.value }
         type = t
         static = s
     }
@@ -45,7 +45,7 @@ class Define(types: Map<String, Environment.Type>): RhovasAst.Visitor<Unit>() {
             type.extds[it.name] = types[it.name] ?: throw Exception("Undefined type ${it.name} (missing import?).")
         }
         ast.mbrs.forEach { visit(it) }
-        type.funcs.filter { it.key.first.isEmpty() }.forEach { t.scope.funcs[Pair(type.name, it.key.second)] = it.value }
+        type.funcs.filter { it.key.first.isEmpty() }.forEach { t.scope.funcs[Pair(ast.type.name, it.key.second)] = it.value }
         type = t
         static = s
     }

@@ -1,0 +1,12 @@
+func main() {
+    print(factorial(7));
+    print(factorial(-7));
+}
+
+func factorial(num: Integer): Integer {
+    require num >= 0;
+    match (num) {
+        0, 1: return 1;
+        else: return num * factorial(num - 1);
+    }
+}

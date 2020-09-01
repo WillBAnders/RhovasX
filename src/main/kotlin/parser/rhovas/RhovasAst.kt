@@ -218,14 +218,17 @@ sealed class RhovasAst {
 
         data class Assert(
             val cond: Expr,
+            val input: String,
         ) : Stmt()
 
         data class Require(
             val cond: Expr,
+            val input: String,
         ) : Stmt()
 
         data class Ensure(
             val cond: Expr,
+            val input: String,
         ) : Stmt()
 
     }

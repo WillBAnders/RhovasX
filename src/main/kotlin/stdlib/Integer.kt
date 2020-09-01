@@ -3,6 +3,10 @@ package dev.willbanders.rhovas.x.stdlib
 import dev.willbanders.rhovas.x.interpreter.Environment
 
 fun defInteger(env: Environment, type: Environment.Type) {
+    type.defMthd("-", 0) { it[0].reqMthd("negate", 0).invoke(it) }
+    type.defMthd("negate", 0) { args ->
+        env.init("Integer", -(args[0].value as Int))
+    }
     type.defMthd("+", 1) { it[0].reqMthd("add", 1).invoke(it) }
     type.defMthd("add", 1) { args ->
         env.init("Integer", args[0].value as Int + args[1].value as Int)

@@ -1,6 +1,13 @@
 package dev.willbanders.rhovas.x.interpreter
 
+import dev.willbanders.rhovas.x.parser.embed.EmbedAst
+import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst
 import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst.*
+import jdk.nashorn.api.scripting.ScriptObjectMirror
+import jdk.nashorn.internal.runtime.ScriptObject
+import javax.script.ScriptEngine
+import javax.script.ScriptEngineFactory
+import javax.script.ScriptEngineManager
 
 object Interpreter : Visitor<Any?>() {
 
@@ -241,19 +248,31 @@ object Interpreter : Visitor<Any?>() {
 
     override fun visit(ast: Stmt.Assert) {
         if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
-            throw Exception("Assert failure: " + ast.cond)
+            throw Exception("Assert failure: " + ast.input + "\n" + findVariables(ast.cond).map { ">> " + it.name + " = " + it.value.reqMthd("toString", 0).invoke(listOf(it.value)).value as String }.joinToString("\n"))
         }
     }
 
     override fun visit(ast: Stmt.Require) {
         if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
-            throw Exception("Require failure: " + ast.cond)
+            throw Exception("Require failure: " + ast.input + "\n" + findVariables(ast.cond).map { ">> " + it.name + " = " + it.value.reqMthd("toString", 0).invoke(listOf(it.value)).value as String }.joinToString("\n"))
         }
     }
 
     override fun visit(ast: Stmt.Ensure) {
         if (!((visit(ast.cond) as Environment.Object).value as Boolean)) {
-            throw Exception("Ensure failure: " + ast.cond)
+            throw Exception("Ensure failure: " + ast.input + "\n" + findVariables(ast.cond).map { ">> " + it.name + " = " + it.value.reqMthd("toString", 0).invoke(listOf(it.value)).value as String }.joinToString("\n"))
+        }
+    }
+
+    private fun findVariables(ast: Expr): List<Environment.Variable> {
+        return when (ast) {
+            is Expr.Group -> findVariables(ast.expr)
+            is Expr.Unary -> findVariables(ast.expr)
+            is Expr.Binary -> findVariables(ast.left) + findVariables(ast.right)
+            is Expr.Access -> if (ast.rec == null) listOf(scope!!.reqVar(ast.name)) else findVariables(ast.rec)
+            is Expr.Index -> findVariables(ast.rec) + ast.args.flatMap { findVariables(it) }
+            is Expr.Function -> (ast.rec?.let { findVariables(it) } ?: listOf()) + ast.args.flatMap { findVariables(it) }
+            else -> listOf()
         }
     }
 
@@ -358,7 +377,29 @@ object Interpreter : Visitor<Any?>() {
     }
 
     override fun visit(ast: Expr.Dsl): Any? {
-        TODO()
+        return if (ast.name == "js" || ast.name == "javascript") {
+            val nashorn = ScriptEngineManager().getEngineByName("nashorn")
+            fromJsObject(nashorn.eval((ast.ast as EmbedAst.Source).text))
+        } else {
+            throw Exception("The only DSL implemented is #js/javascript")
+        }
+    }
+
+    fun fromJsObject(obj: Any?): Environment.Object {
+        return when (obj) {
+            is ScriptObjectMirror -> {
+                if (obj.isArray) {
+                    ENV.init("List", obj.entries.map { fromJsObject(it.value) }.toList())
+                } else {
+                    ENV.init("Map", obj.entries.map { Pair(it.key, fromJsObject(it.value)) }.toMap())
+                }
+            }
+            null -> ENV.init("Null", null)
+            is Boolean -> ENV.init("Boolean", obj)
+            is Number -> ENV.init("Decimal", obj.toDouble())
+            is String -> ENV.init("String", obj)
+            else -> throw Exception("Unknown JS object type: " + obj.javaClass.name)
+        }
     }
 
     fun <T> scoped(scope: Scope, block: () -> T): T {

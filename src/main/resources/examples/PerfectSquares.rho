@@ -1,0 +1,3 @@
+func main() {
+    print(range(0, 10, :incl).map { return val * val; });
+}

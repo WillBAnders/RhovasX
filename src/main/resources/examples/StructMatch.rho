@@ -1,0 +1,23 @@
+func main() {
+    test(Vector(1, 2, 3));
+    test(Vector({x = 0, y = 1, z = 2}));
+    test(Vector(-1, -2, -3));
+    test(Vector({x = 2, y = 1, z = 0}));
+}
+
+func test(vec: Vector) {
+    match (vec) {
+        [1, 2, 3]: print("Vector " + vec + " matched [1, 2, 3].");
+        {x = 0, rest..}: print("Vector " + vec + " matched {x = 0, rest..}.");
+        [-1, _, -3]: print("Vector " + vec + " matched [-1, _, -3]");
+        else: print("Vector " + vec + " did not match any pattern.");
+    }
+}
+
+struct Vector {
+
+    val x: Integer;
+    val y: Integer;
+    val z: Integer;
+
+}

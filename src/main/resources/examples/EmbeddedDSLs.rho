@@ -1,0 +1,10 @@
+func main() {
+    print(#js {
+        obj = {
+            name: "Jason",
+            age: 20
+        }
+        obj.age++
+        obj
+    });
+}
