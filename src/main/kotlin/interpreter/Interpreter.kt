@@ -100,7 +100,10 @@ object Interpreter : Visitor<Any?>() {
 
     override fun visit(ast: Stmt.Match.Pattern.List): Boolean {
         val match = this.match
-        val list = match?.value as? List<Environment.Object> ?: return false
+        val list = match?.value as? List<Environment.Object> ?: if (match?.type?.isSubtypeOf(ENV.reqType("Struct")) == true) {
+            val fields = match!!.reqProp("fields").get(listOf(match!!))
+            fields.reqProp("values").get(listOf(fields)).value as List<Environment.Object>
+        } else return false
         if (list.size < ast.elmts.size || list.size > ast.elmts.size && ast.rest == null) return false
         val res = ast.elmts.withIndex().all { pattern ->
             list.getOrNull(pattern.index)?.let {
@@ -119,13 +122,13 @@ object Interpreter : Visitor<Any?>() {
         val match = this.match!!
         if (!(match.type.flds.keys - ast.elmts.keys).isEmpty() && ast.rest == null) return false
         val res = ast.elmts.all { pattern ->
-            match.type.getFld(pattern.key)?.let {
-                this.match = it.value
+            match.type.getProp(pattern.key)?.let {
+                this.match = it.get(listOf(match))
                 visit(pattern.value) as Boolean
             } == true
         }
         if (res && ast.rest != null) {
-            scope!!.vars[ast.rest] = Environment.Variable(ast.rest, ENV.init("Map", (match.type.flds.keys - ast.elmts.keys).map { Pair(it, match.reqProp(it)) }.toMap()))
+            scope!!.vars[ast.rest] = Environment.Variable(ast.rest, ENV.init("Map", (match.type.flds.keys - ast.elmts.keys).map { Pair(it, match.reqProp(it).get(listOf(match))) }.toMap()))
         }
         this.match = match
         return res

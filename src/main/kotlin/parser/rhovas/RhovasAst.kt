@@ -58,6 +58,13 @@ sealed class RhovasAst {
                 val mbrs: List<Mbr>,
             ) : Cmpt()
 
+            data class Struct(
+                val modifiers: Modifiers,
+                val type: Type,
+                val extends: List<Type>,
+                val mbrs: List<Mbr>,
+            ) : Cmpt()
+
         }
 
         data class Property(
@@ -288,6 +295,7 @@ sealed class RhovasAst {
                 is Modifiers -> visit(ast)
                 is Mbr.Cmpt.Class -> visit(ast)
                 is Mbr.Cmpt.Interface -> visit(ast)
+                is Mbr.Cmpt.Struct -> visit(ast)
                 is Mbr.Property -> visit(ast)
                 is Mbr.Constructor -> visit(ast)
                 is Mbr.Function -> visit(ast)
@@ -352,6 +360,10 @@ sealed class RhovasAst {
         }
 
         protected open fun visit(ast: Mbr.Cmpt.Interface): T {
+            TODO()
+        }
+
+        protected open fun visit(ast: Mbr.Cmpt.Struct): T {
             TODO()
         }
 

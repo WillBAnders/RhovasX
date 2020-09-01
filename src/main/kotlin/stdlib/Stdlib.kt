@@ -16,6 +16,9 @@ object Stdlib {
         Files.walk(root).filter { Files.isRegularFile(it) }.forEach {
             getOrInit(env, root.relativize(it).toString().replace(".rho", "").replace("/", "."))
         }
+        env.defType("Struct") { type ->
+            type.extds["Equatable"] = env.reqType("Equatable")
+        }
         env.defType("Lambda") {}
         env.defType("KeywordVariable") { type ->
             type.defProp("val",

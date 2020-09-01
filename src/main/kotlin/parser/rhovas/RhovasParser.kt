@@ -84,6 +84,7 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
         return when (tokens[0]?.literal) {
             "class" -> parseClassCmpt(modifiers)
             "interface" -> parseInterfaceCmpt(modifiers)
+            "struct" -> parseStructCmpt(modifiers)
             "var", "val" -> parsePropertyMbr(modifiers)
             "ctor" -> parseConstructorMbr(modifiers)
             "func" -> parseFunctionMbr(modifiers)
@@ -136,6 +137,28 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
         }.toList()
         context.pop()
         return RhovasAst.Mbr.Cmpt.Interface(modifiers, type, extends, mbrs)
+    }
+
+    private fun parseStructCmpt(modifiers: RhovasAst.Modifiers): RhovasAst.Mbr.Cmpt.Struct {
+        require(match("struct"))
+        context.push(tokens[-1]!!.range)
+        val type = parseType()
+        val extends = if (match(":")) {
+            val types = mutableListOf<RhovasAst.Type>()
+            do {
+                types.add(parseType())
+            } while (match(","))
+            types
+        } else listOf()
+        require(match("{")) { error(
+            "Expected opening brace.",
+            "The body of a struct must be surrounded by braces `{}`, as in `struct Name { ... }`."
+        )}
+        val mbrs = generateSequence {
+            if (!match("}")) parseMember() else null
+        }.toList()
+        context.pop()
+        return RhovasAst.Mbr.Cmpt.Struct(modifiers, type, extends, mbrs)
     }
 
     private fun parsePropertyMbr(modifiers: RhovasAst.Modifiers): RhovasAst.Mbr.Property {

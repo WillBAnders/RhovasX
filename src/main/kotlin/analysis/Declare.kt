@@ -35,4 +35,14 @@ class Declare(private val name: String): RhovasAst.Visitor<Any?>() {
         type = t
     }
 
+    override fun visit(ast: RhovasAst.Mbr.Cmpt.Struct) {
+        val t = type
+        if (name != type.name || name.substringAfterLast(".") != ast.type.name) {
+            ENV.defType(type.name + "." + ast.type.name, type.scope) { type = it }
+            types[ast.type.name] = type
+        }
+        ast.mbrs.filterIsInstance<RhovasAst.Mbr.Cmpt>().forEach { visit(it) }
+        type = t
+    }
+
 }
