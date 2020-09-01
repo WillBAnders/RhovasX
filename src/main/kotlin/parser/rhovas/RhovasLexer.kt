@@ -1,6 +1,8 @@
 package dev.willbanders.rhovas.x.parser.rhovas
 
+import dev.willbanders.rhovas.x.parser.Diagnostic
 import dev.willbanders.rhovas.x.parser.Lexer
+import dev.willbanders.rhovas.x.parser.ParseException
 import dev.willbanders.rhovas.x.parser.Token
 
 class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
@@ -44,25 +46,64 @@ class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
 
     private fun lexCharacter(): Token<RhovasTokenType> {
         require(match('\''))
-        require(match("[^\'\n\r]")) { error(
-            "Invalid character literal.",
-            "A character literal must start and end with a single quote (\'), contain a single character, and cannot span multiple lines."
-        )}
-        require(match('\'')) { error(
+        require(chars[0] != null) { error(
             "Unterminated character literal.",
-            "A character literal must start and end with a single quote (\'), contain a single character, and cannot span multiple lines."
+            "A character literal must start and end with a single quote `\'`, contain a single character, and cannot span multiple lines, as in `\'c\'`.",
         )}
+        require(!match('\'')) { error(
+            "Empty character literal.",
+            "A character literal must contain a single character, as in `\'c\'`. If a literal single-quote is desired, use an escape as in `\'\\\'\'`.",
+        )}
+        lexEscape()
+        if (!match('\'')) {
+            while (match("[^\'\n\r]")) {}
+            require(match('\'')) { error(
+                "Unterminated character literal.",
+                "A character literal must start and end with a single quote `\'`, contain a single character, and cannot span multiple lines, as in `\'c\'`.",
+            )}
+            throw ParseException(error(
+                "Character literal contains multiple characters.",
+                "A character literal must contain a single character, as in `\'c\'. If multiple characters is desired, use a string as in `\"abc\"`.",
+            ))
+        }
         return chars.emit(RhovasTokenType.CHARACTER)
     }
 
     private fun lexString(): Token<RhovasTokenType> {
         require(match('\"'))
-        while (match("[^\"\n\r]")) {}
+        while (peek("[^\"\n\r]")) { lexEscape() }
         require(match('\"')) { error(
             "Unterminated string literal.",
             "A string literal must start and end with a double quote (\") and cannot span multiple lines."
         )}
         return chars.emit(RhovasTokenType.STRING)
+    }
+
+    private fun lexEscape() {
+        if (match('\\')) {
+            val range = chars.range
+            if (match('u')) {
+                for (i in 0..3) {
+                    if (chars[0] != null) {
+                        require(match("[0-9A-F]")) { Diagnostic.Error(
+                            "Invalid unicode escape character.",
+                            "A unicode escape is in the form \\uXXXX, where X is a hexadecimal digit (0-9 & A-F). If a literal backslash is desired, use an escape as in \"abc\\\\123\".",
+                            Diagnostic.Range(range.index + range.length - 1, range.line, range.column + range.length - 1, i + 3),
+                            emptySet()
+                        )}
+                    }
+                }
+            } else {
+                require(match("[bnrt\'\"\\\\]")) { Diagnostic.Error(
+                    "Invalid escape character.",
+                    "An escape is in the form \\char, where char is one of b, f, n, r, t, \', \", and \\. If a literal backslash is desired, use an escape as in \"abc\\\\123\".",
+                    Diagnostic.Range(range.index + range.length - 1, range.line, range.column + range.length - 1, 2),
+                    emptySet()
+                )}
+            }
+        } else {
+            chars.advance()
+        }
     }
 
     private fun lexComment(): Token<RhovasTokenType>? {

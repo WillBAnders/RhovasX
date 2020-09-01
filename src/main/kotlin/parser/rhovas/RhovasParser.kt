@@ -4,8 +4,11 @@ import dev.willbanders.rhovas.x.parser.Diagnostic
 import dev.willbanders.rhovas.x.parser.ParseException
 import dev.willbanders.rhovas.x.parser.Parser
 import dev.willbanders.rhovas.x.parser.embed.EmbedParser
+import java.util.regex.Pattern
 
 class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) {
+
+    private val ESCAPES = Pattern.compile("\\\\(?:([bfnrt\'\"\\\\])|u([0-9A-F]{4}))")
 
     override fun parse(): RhovasAst.Source {
         return parseSource()
@@ -641,8 +644,8 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             match(listOf("true", "false")) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal.toBoolean())
             match(RhovasTokenType.INTEGER) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal.toInt())
             match(RhovasTokenType.DECIMAL) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal.toDouble())
-            match(RhovasTokenType.CHARACTER) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal[1])
-            match(RhovasTokenType.STRING) -> RhovasAst.Expr.Literal(tokens[-1]!!.literal.removeSurrounding("\""))
+            match(RhovasTokenType.CHARACTER) -> RhovasAst.Expr.Literal(unescape(tokens[-1]!!.literal.removeSurrounding("\'"))[0])
+            match(RhovasTokenType.STRING) -> RhovasAst.Expr.Literal(unescape(tokens[-1]!!.literal.removeSurrounding("\"")))
             match(".") -> {
                 val name = parseIdentifier { "Context access requires an identifier, as in `.name`." }
                 val rec = RhovasAst.Expr.Access(null, "this")
@@ -691,10 +694,12 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
                 RhovasAst.Expr.Group(expr)
             }
             peek("#") -> parseDslExpr()
-            else -> throw ParseException(error(
-                "Unexpected token `${tokens[0]!!.literal}`.",
-                "The parser expected to parse an expression, but received an unexpected token instead."
-            ))
+            else -> throw ParseException(
+                error(
+                    "Unexpected token `${tokens[0]!!.literal}`.",
+                    "The parser expected to parse an expression, but received an unexpected token instead."
+                )
+            )
         }
     }
 
@@ -764,6 +769,33 @@ class RhovasParser(input: String) : Parser<RhovasTokenType>(RhovasLexer(input)) 
             val range = with(tokens[-1]!!.range) { copy(index = index + length, column = column + length, length = 1) }
             Diagnostic.Error("Expected semicolon.", details(), range, context.toHashSet())
         }
+    }
+
+    private fun unescape(string: String): String {
+        val builder = StringBuilder()
+        val matcher = ESCAPES.matcher(string)
+        var index = 0
+        while (matcher.find()) {
+            if (index < matcher.start()) {
+                builder.append(string, index, matcher.start())
+            }
+            when {
+                matcher.group(1) != null -> when (matcher.group(1)) {
+                    "b" -> builder.append("\b")
+                    "n" -> builder.append("\n")
+                    "r" -> builder.append("\r")
+                    "t" -> builder.append("\t")
+                    "\'" -> builder.append("\'")
+                    "\"" -> builder.append("\"")
+                    "\\" -> builder.append("\\")
+                    else -> require(false)
+                }
+                matcher.group(2) != null -> builder.append(matcher.group(2).toInt(16).toChar())
+                else -> require(false)
+            }
+            index = matcher.end()
+        }
+        return builder.append(string.substring(index)).toString()
     }
 
 }
