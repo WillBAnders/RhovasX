@@ -21,6 +21,7 @@ class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
             peek("[0-9]") -> lexNumber()
             peek('\'') -> lexCharacter()
             peek('\"') -> lexString()
+            peek('-', '-') -> lexComment()
             else -> lexOperator()
         }
     }
@@ -62,6 +63,17 @@ class RhovasLexer(input: String) : Lexer<RhovasTokenType>(input) {
             "A string literal must start and end with a double quote (\") and cannot span multiple lines."
         )}
         return chars.emit(RhovasTokenType.STRING)
+    }
+
+    private fun lexComment(): Token<RhovasTokenType>? {
+        match('-', '-')
+        if (match('[')) {
+            while (chars[0] != null && !match('-', '-', ']')) { chars.advance() }
+        } else {
+            while (match("[^\n\r]")) {}
+        }
+        chars.reset()
+        return lexToken()
     }
 
     private fun lexOperator(): Token<RhovasTokenType> {
