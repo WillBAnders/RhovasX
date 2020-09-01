@@ -1,2 +1,2 @@
 language = "kotlin"
-run = "./gradlew run"
+run = "./gradlew run -q --console=plain #~2-4m to init first run, wait for Rhovas message."

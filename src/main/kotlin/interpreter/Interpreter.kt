@@ -1,12 +1,8 @@
 package dev.willbanders.rhovas.x.interpreter
 
 import dev.willbanders.rhovas.x.parser.embed.EmbedAst
-import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst
 import dev.willbanders.rhovas.x.parser.rhovas.RhovasAst.*
 import jdk.nashorn.api.scripting.ScriptObjectMirror
-import jdk.nashorn.internal.runtime.ScriptObject
-import javax.script.ScriptEngine
-import javax.script.ScriptEngineFactory
 import javax.script.ScriptEngineManager
 
 object Interpreter : Visitor<Any?>() {

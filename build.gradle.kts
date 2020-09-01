@@ -31,3 +31,8 @@ tasks {
 application {
     mainClassName = "dev.willbanders.rhovas.x.MainKt"
 }
+
+tasks.getByName<JavaExec>("run") {
+    standardInput = System.`in`
+    standardOutput = System.`out`
+}
